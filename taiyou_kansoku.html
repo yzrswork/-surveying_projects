@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太陽による真北方向角の観測手簿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper:            #faf7f2;
+  --paper-deep:       #f3ede2;
+  --ink:              #1c1917;
+  --ink-soft:         #44403c;
+  --ink-faint:        #78716c;
+  --rule:             #292524;
+  --rule-soft:        #d6d3d1;
+  --rule-faint:       #e7e5e4;
+  --input-bg:         #fef9c3;
+  --input-bg-active:  #fde68a;
+  --accent:           #991b1b;
+  --accent-bg:        #fef2f2;
+  --error:            #dc2626;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Serif JP', 'Yu Mincho', serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 48px;
+}
+
+/* ── Header ── */
+.doc-header {
+  border-top: 2px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 20px 0 16px;
+  margin-bottom: 28px;
+}
+
+.doc-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.header-info {
+  display: grid;
+  grid-template-columns: 160px 1fr 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.header-field { display: flex; flex-direction: column; gap: 4px; }
+
+.header-field label {
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+}
+
+.header-field input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  background: var(--input-bg);
+  border: none;
+  border-bottom: 1px solid var(--ink-faint);
+  padding: 4px 2px;
+  color: var(--ink);
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.header-field input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--ink);
+  background: var(--input-bg-active);
+}
+
+.display-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  min-height: 15px;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* ── Buttons ── */
+button {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 12px;
+  padding: 6px 18px;
+  border: 1px solid var(--rule-soft);
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  transition: background 0.1s;
+}
+button:hover { background: var(--rule-faint); }
+
+/* ── Observation sets ── */
+.set-block {
+  margin-bottom: 18px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.set-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 8px 0 5px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.set-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.set-meta {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+/* ── Observation table ── */
+.obs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2px;
+}
+
+.obs-table th {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--rule-faint);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.obs-table td {
+  padding: 2px 4px;
+  text-align: center;
+  font-size: 12px;
+  border-bottom: 1px solid var(--rule-faint);
+}
+
+.obs-table td.c-rownum {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  width: 22px;
+}
+
+.obs-table td.c-face {
+  font-size: 11px;
+  color: var(--ink-soft);
+  width: 28px;
+}
+
+.obs-table td.c-target {
+  font-size: 11px;
+  width: 34px;
+}
+
+.obs-table td.c-time { width: 104px; }
+.obs-table td.c-angle { width: 126px; }
+
+.obs-table td.c-calc {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  text-align: right;
+  padding-right: 8px;
+}
+
+.obs-table td.c-nodash {
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+/* ── Inputs inside table ── */
+input[type="text"].t-time,
+input[type="number"].t-angle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--input-bg);
+  border: none;
+  border-bottom: 1px solid var(--ink-faint);
+  padding: 2px 4px;
+  color: var(--ink);
+  width: 100%;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+input[type="number"].t-angle { -moz-appearance: textfield; }
+input[type="number"].t-angle::-webkit-inner-spin-button,
+input[type="number"].t-angle::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+input[type="text"].t-time:focus,
+input[type="number"].t-angle:focus {
+  outline: none;
+  border-bottom: 2px solid var(--ink);
+  background: var(--input-bg-active);
+}
+
+input.is-error {
+  border-bottom: 2px solid var(--error) !important;
+  background: #fff0f0 !important;
+}
+
+/* ── Set summary ── */
+.set-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 8px 4px 4px;
+  border-top: 1px solid var(--rule-faint);
+}
+
+.s-item { display: flex; flex-direction: column; gap: 2px; }
+
+.s-item .s-label {
+  font-size: 9px;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.s-item .s-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.s-item.ms-highlight .s-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.set-divider {
+  border: none;
+  border-top: 1px solid var(--rule-faint);
+  margin: 4px 0;
+}
+
+/* ── Final results ── */
+.final-result {
+  margin-top: 32px;
+  padding: 20px 24px;
+  background: var(--accent-bg);
+  border-top: 2px solid var(--accent);
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.final-result h2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 18px;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.r-item { display: flex; flex-direction: column; gap: 5px; }
+
+.r-item label {
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+}
+
+.r-item .r-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.r-item input.r-input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--input-bg);
+  border: none;
+  border-bottom: 1px solid var(--ink-faint);
+  padding: 2px 4px;
+  color: var(--ink);
+  width: 100%;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.r-item input.r-input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--accent);
+  background: var(--input-bg-active);
+}
+
+/* ── Print ── */
+@media print {
+  @page { size: A4 portrait; margin: 15mm 12mm; }
+
+  body { font-size: 9pt; }
+
+  .container { padding: 0; max-width: 100%; }
+
+  .header-buttons { display: none; }
+
+  .doc-header { padding: 8px 0 6px; margin-bottom: 14px; }
+  .doc-header h1 { font-size: 13pt; margin-bottom: 10px; }
+
+  .header-info { gap: 12px; }
+
+  .set-block { margin-bottom: 8px; }
+
+  .obs-table th, .obs-table td { font-size: 8pt; padding: 1px 3px; }
+
+  .s-item .s-val { font-size: 8pt; }
+  .s-item.ms-highlight .s-val { font-size: 9pt; }
+
+  .final-result { margin-top: 16px; padding: 12px 16px; }
+  .r-item .r-val, .r-item input.r-input { font-size: 12pt; }
+
+  input[type="text"].t-time,
+  input[type="number"].t-angle,
+  .header-field input,
+  .r-item input.r-input {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: var(--input-bg) !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ===== Document header ===== -->
+  <header class="doc-header">
+    <h1>太陽による真北方向角の観測手簿</h1>
+    <div class="header-info">
+      <div class="header-field">
+        <label for="obs-date">観測日</label>
+        <input type="date" id="obs-date">
+      </div>
+      <div class="header-field">
+        <label for="obs-lat">緯度（度.分秒）</label>
+        <input type="number" id="obs-lat" step="0.000001" placeholder="35.423577">
+        <div class="display-val" id="lat-display"></div>
+      </div>
+      <div class="header-field">
+        <label for="obs-lon">経度（度.分秒）</label>
+        <input type="number" id="obs-lon" step="0.000001" placeholder="139.485344">
+        <div class="display-val" id="lon-display"></div>
+      </div>
+      <div class="header-field">
+        <label for="obs-point">観測点</label>
+        <input type="text" id="obs-point" placeholder="T1〜T2">
+      </div>
+    </div>
+    <div class="header-buttons">
+      <button onclick="window.print()">印刷（Ctrl+P）</button>
+      <button onclick="clearAll()">全クリア</button>
+    </div>
+  </header>
+
+  <!-- ===== Observation sets (built by JS) ===== -->
+  <div id="sets-container"></div>
+
+  <!-- ===== Final results ===== -->
+  <div class="final-result">
+    <h2>集計結果</h2>
+    <div class="result-grid">
+      <div class="r-item">
+        <label>方位角中数</label>
+        <div class="r-val" id="mean-ms">—</div>
+      </div>
+      <div class="r-item">
+        <label>真北方向角（WEB）</label>
+        <input type="text" id="north-web" class="r-input" placeholder="+0°00′38.85″">
+      </div>
+      <div class="r-item">
+        <label>差分（計算値 − WEB）</label>
+        <div class="r-val" id="diff-val">—</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .container -->
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────
+// Core math helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Convert DD.MMSSss → decimal degrees.
+ * Algorithm exactly as specified to handle floating-point edge cases.
+ */
+function dms2deg(x) {
+  if (x == null || x === '' || isNaN(x)) return NaN;
+  x = parseFloat(x);
+  const d = Math.floor(x);
+  const frac = (x - d) + 1e-6;
+  const mRaw = Math.floor(frac * 100) / 100;   // minutes as 0.MM
+  const mDeg = mRaw * 100 / 60;                // MM/60
+  const sRaw = x - Math.floor(x * 100) / 100;  // seconds fraction
+  const sDeg = sRaw * 10000 / 3600;            // SS/3600
+  return d + mDeg + sDeg;
+}
+
+/** Decimal degrees → "D°MM′SS.ss″" */
+function deg2dms(deg) {
+  if (deg == null || isNaN(deg)) return '—';
+  const sign = deg < 0 ? '-' : '';
+  deg = Math.abs(deg);
+  const d = Math.floor(deg);
+  const mTot = (deg - d) * 60;
+  const m = Math.floor(mTot + 1e-9);           // epsilon avoids 59.9999… → 60
+  const s = (mTot - m) * 60;
+  const sStr = s.toFixed(2).padStart(5, '0');
+  return `${sign}${d}°${String(m).padStart(2, '0')}′${sStr}″`;
+}
+
+/** "HH:MM:SS" (or "HH:MM") → day fraction */
+function time2serial(t) {
+  if (!t || typeof t !== 'string') return NaN;
+  const p = t.split(':');
+  if (p.length < 2) return NaN;
+  const h = parseInt(p[0], 10) || 0;
+  const mi = parseInt(p[1], 10) || 0;
+  const s  = p.length > 2 ? (parseInt(p[2], 10) || 0) : 0;
+  return (h * 3600 + mi * 60 + s) / 86400;
+}
+
+/** Day fraction → "HH:MM:SS" */
+function serial2time(serial) {
+  if (isNaN(serial)) return '—';
+  const tot = Math.round(serial * 86400);
+  const h = Math.floor(tot / 3600);
+  const m = Math.floor((tot % 3600) / 60);
+  const s = tot % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function norm360(x) { return ((x % 360) + 360) % 360; }
+
+/** Validate DD.MMSSss raw input string */
+function validateDmsStr(v) {
+  if (v === '' || v == null) return true;
+  const x = parseFloat(v);
+  if (isNaN(x) || x < 0 || x >= 360) return false;
+  const d   = Math.floor(x);
+  const mm  = Math.floor((x - d + 1e-6) * 100);   // minutes integer 0..99
+  const ss  = Math.round(((x - Math.floor(x * 100) / 100)) * 10000); // seconds integer 0..99
+  if (mm > 59 || ss > 59) return false;
+  return true;
+}
+
+// ─────────────────────────────────────────────
+// Set configuration
+// ─────────────────────────────────────────────
+
+/*
+  Row layout per set:
+    Odd  (r,l): r-m | r-s | r-s | l-s | l-s | l-m
+    Even (l,r): l-m | l-s | l-s | r-s | r-s | r-m
+
+  mr index (正位置後視):
+    Odd  → row 0   Even → row 5
+  ml index (反位置後視):
+    Odd  → row 5   Even → row 0
+  Solar row indices (all sets rows 1..4 are solar):
+    all = [1,2,3,4]
+  ±360 judgment uses the first r-s reading:
+    Odd  → row 1   Even → row 3
+  Time rows (s observations): [1,2,3,4]
+*/
+function setCfg(n) {
+  const odd = (n % 2 === 1);
+  const rows = odd
+    ? [
+        { face:'r', tgt:'m', hasTime:false },
+        { face:'r', tgt:'s', hasTime:true  },
+        { face:'r', tgt:'s', hasTime:true  },
+        { face:'l', tgt:'s', hasTime:true  },
+        { face:'l', tgt:'s', hasTime:true  },
+        { face:'l', tgt:'m', hasTime:false },
+      ]
+    : [
+        { face:'l', tgt:'m', hasTime:false },
+        { face:'l', tgt:'s', hasTime:true  },
+        { face:'l', tgt:'s', hasTime:true  },
+        { face:'r', tgt:'s', hasTime:true  },
+        { face:'r', tgt:'s', hasTime:true  },
+        { face:'r', tgt:'m', hasTime:false },
+      ];
+  return {
+    odd,
+    rotation: (n - 1) * 18,
+    order: odd ? 'r, l 順' : 'l, r 順',
+    rows,
+    mrIdx:    odd ? 0 : 5,
+    mlIdx:    odd ? 5 : 0,
+    sIdxs:    [1, 2, 3, 4],
+    judgeIdx: odd ? 1 : 3,   // first r-s for ±360 decision
+    timeIdxs: [1, 2, 3, 4],
+  };
+}
+
+// ─────────────────────────────────────────────
+// DOM generation
+// ─────────────────────────────────────────────
+
+function buildSets() {
+  const container = document.getElementById('sets-container');
+  for (let n = 1; n <= 10; n++) {
+    if (n > 1) {
+      const hr = document.createElement('hr');
+      hr.className = 'set-divider';
+      container.appendChild(hr);
+    }
+    container.appendChild(makeSetBlock(n));
+  }
+}
+
+function makeSetBlock(n) {
+  const cfg = setCfg(n);
+  const div = document.createElement('div');
+  div.className = 'set-block';
+  div.id = `set${n}`;
+
+  // Heading
+  const heading = document.createElement('div');
+  heading.className = 'set-heading';
+  heading.innerHTML =
+    `<span class="set-num">セット ${n}</span>` +
+    `<span class="set-meta">輪郭 ${cfg.rotation}°　${cfg.order}</span>`;
+  div.appendChild(heading);
+
+  // Table
+  const tbl = document.createElement('table');
+  tbl.className = 'obs-table';
+  tbl.innerHTML =
+    `<thead><tr>` +
+    `<th>行</th><th>正反</th><th>目標</th>` +
+    `<th>時　刻</th><th>観測角（度.分秒）</th><th>変換値</th>` +
+    `</tr></thead>`;
+  const tbody = document.createElement('tbody');
+
+  cfg.rows.forEach((row, ri) => {
+    const tr = document.createElement('tr');
+    const faceLabel = row.face === 'r' ? '正' : '反';
+    const tgtLabel  = row.tgt  === 'm' ? '後視' : '太陽';
+    const tabBase   = (n - 1) * 12 + ri * 2 + 1;
+
+    const timeCell = row.hasTime
+      ? `<td class="c-time"><input type="text" class="t-time"
+           id="s${n}r${ri}t" placeholder="HH:MM:SS"
+           data-s="${n}" data-r="${ri}" data-f="t"
+           tabindex="${tabBase}"></td>`
+      : `<td class="c-time c-nodash">—</td>`;
+
+    tr.innerHTML =
+      `<td class="c-rownum">${ri + 1}</td>` +
+      `<td class="c-face">${faceLabel}</td>` +
+      `<td class="c-target">${tgtLabel}</td>` +
+      timeCell +
+      `<td class="c-angle"><input type="number" class="t-angle" step="0.0001"
+         id="s${n}r${ri}a" placeholder="0.0000"
+         data-s="${n}" data-r="${ri}" data-f="a"
+         tabindex="${tabBase + 1}"></td>` +
+      `<td class="c-calc" id="s${n}r${ri}c"></td>`;
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  div.appendChild(tbl);
+
+  // Summary
+  const summary = document.createElement('div');
+  summary.className = 'set-summary';
+  summary.innerHTML =
+    `<div class="s-item"><div class="s-label">M<sub>m</sub>（後視標平均）</div><div class="s-val" id="s${n}-mm">—</div></div>` +
+    `<div class="s-item"><div class="s-label">M<sub>s</sub>（太陽平均）</div><div class="s-val" id="s${n}-msv">—</div></div>` +
+    `<div class="s-item"><div class="s-label">T′（平均時刻）</div><div class="s-val" id="s${n}-tp">—</div></div>` +
+    `<div class="s-item ms-highlight"><div class="s-label">M − S</div><div class="s-val" id="s${n}-ms">—</div></div>`;
+  div.appendChild(summary);
+
+  return div;
+}
+
+// ─────────────────────────────────────────────
+// Calculation
+// ─────────────────────────────────────────────
+
+function getAngle(n, ri) {
+  const el = document.getElementById(`s${n}r${ri}a`);
+  return el ? el.value.trim() : '';
+}
+function getTime(n, ri) {
+  const el = document.getElementById(`s${n}r${ri}t`);
+  return el ? el.value.trim() : '';
+}
+
+function calcSet(n) {
+  const cfg = setCfg(n);
+
+  // Raw angle strings
+  const aStr = Array.from({length:6}, (_, ri) => getAngle(n, ri));
+
+  // Validate & mark errors
+  aStr.forEach((v, ri) => {
+    const el = document.getElementById(`s${n}r${ri}a`);
+    if (!el) return;
+    el.classList.toggle('is-error', v !== '' && !validateDmsStr(v));
+  });
+
+  // Convert to decimal degrees
+  const degs = aStr.map(v => v === '' ? NaN : dms2deg(parseFloat(v)));
+
+  // Update conversion display cells
+  degs.forEach((deg, ri) => {
+    const cell = document.getElementById(`s${n}r${ri}c`);
+    if (!cell) return;
+    if (aStr[ri] === '') {
+      cell.textContent = '';
+      cell.style.color = '';
+    } else if (isNaN(deg)) {
+      cell.textContent = 'エラー';
+      cell.style.color = 'var(--error)';
+    } else {
+      cell.textContent = deg2dms(deg);
+      cell.style.color = '';
+    }
+  });
+
+  // ── M_m ──
+  const mrDeg = degs[cfg.mrIdx];
+  const mlDeg = degs[cfg.mlIdx];
+  let Mm = NaN;
+  if (!isNaN(mrDeg) && !isNaN(mlDeg)) {
+    Mm = norm360(((mrDeg + mlDeg) - 180) / 2);
+  }
+
+  // ── M_s with ±360 correction ──
+  const sDegs = cfg.sIdxs.map(i => degs[i]);
+  let Ms = NaN;
+  if (sDegs.every(v => !isNaN(v))) {
+    const sSum = sDegs.reduce((a, b) => a + b, 0);
+    // Judge on raw input of first r-s observation
+    const judgeRaw = parseFloat(aStr[cfg.judgeIdx]);
+    const correction = (!isNaN(judgeRaw) && judgeRaw < 180) ? -360 : +360;
+    Ms = norm360((sSum + correction) / 4);
+  }
+
+  // ── T' (mean of 4 solar times) ──
+  const tSerials = cfg.timeIdxs.map(ri => time2serial(getTime(n, ri)));
+  let Tp = NaN;
+  if (tSerials.every(v => !isNaN(v))) {
+    Tp = tSerials.reduce((a, b) => a + b, 0) / 4;
+  }
+
+  // ── M-S ──
+  let MS = NaN;
+  if (!isNaN(Mm) && !isNaN(Ms)) {
+    MS = norm360(Mm - Ms);
+  }
+
+  // Update display
+  setText(`s${n}-mm`,  isNaN(Mm) ? '—' : deg2dms(Mm));
+  setText(`s${n}-msv`, isNaN(Ms) ? '—' : deg2dms(Ms));
+  setText(`s${n}-tp`,  isNaN(Tp) ? '—' : serial2time(Tp));
+  setText(`s${n}-ms`,  isNaN(MS) ? '—' : deg2dms(MS));
+
+  return MS;
+}
+
+function calcAll() {
+  const msVals = [];
+  for (let n = 1; n <= 10; n++) {
+    const ms = calcSet(n);
+    if (!isNaN(ms)) msVals.push(ms);
+  }
+
+  let mean = NaN;
+  if (msVals.length > 0) {
+    mean = msVals.reduce((a, b) => a + b, 0) / msVals.length;
+  }
+
+  setText('mean-ms', isNaN(mean) ? '—' : deg2dms(mean));
+  updateDiff(mean);
+}
+
+function updateDiff(mean) {
+  const webStr = document.getElementById('north-web').value.trim();
+  setText('diff-val', '—');
+  if (isNaN(mean) || webStr === '') return;
+
+  // Parse WEB value: accepts "±D°MM′SS.ss″" or plain decimal degrees
+  // Try to parse DMS notation e.g. "+1°23′45.67″" or "-0°05′12.00″"
+  const dmsMatch = webStr.match(/^([+-]?)\s*(\d+)°(\d+)′([\d.]+)″?$/);
+  let webDeg = NaN;
+  if (dmsMatch) {
+    const sign = dmsMatch[1] === '-' ? -1 : 1;
+    const d = parseInt(dmsMatch[2], 10);
+    const m = parseInt(dmsMatch[3], 10);
+    const s = parseFloat(dmsMatch[4]);
+    webDeg = sign * (d + m/60 + s/3600);
+  } else {
+    webDeg = parseFloat(webStr);
+  }
+
+  if (isNaN(webDeg)) return;
+  const diff = mean - webDeg;
+  setText('diff-val', deg2dms(diff));
+}
+
+// ─────────────────────────────────────────────
+// Persistence (localStorage)
+// ─────────────────────────────────────────────
+
+const STORAGE_KEY = 'taiyou_kansoku_data_v1';
+
+function saveData() {
+  const data = {
+    date:     document.getElementById('obs-date').value,
+    lat:      document.getElementById('obs-lat').value,
+    lon:      document.getElementById('obs-lon').value,
+    point:    document.getElementById('obs-point').value,
+    northWeb: document.getElementById('north-web').value,
+    sets: {},
+  };
+  for (let n = 1; n <= 10; n++) {
+    const cfg = setCfg(n);
+    data.sets[n] = {};
+    for (let ri = 0; ri < 6; ri++) {
+      data.sets[n][ri] = {
+        a: getAngle(n, ri),
+        t: cfg.rows[ri].hasTime ? getTime(n, ri) : '',
+      };
+    }
+  }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(_) {}
+}
+
+function loadData() {
+  let raw;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch(_) { return; }
+  if (!raw) return;
+  let data;
+  try { data = JSON.parse(raw); } catch(_) { return; }
+
+  if (data.date)     setVal('obs-date',  data.date);
+  if (data.lat)      setVal('obs-lat',   data.lat);
+  if (data.lon)      setVal('obs-lon',   data.lon);
+  if (data.point)    setVal('obs-point', data.point);
+  if (data.northWeb) setVal('north-web', data.northWeb);
+
+  updateLatDisplay();
+  updateLonDisplay();
+
+  if (!data.sets) return;
+  for (let n = 1; n <= 10; n++) {
+    if (!data.sets[n]) continue;
+    const cfg = setCfg(n);
+    for (let ri = 0; ri < 6; ri++) {
+      const row = data.sets[n][ri];
+      if (!row) continue;
+      if (row.a) setVal(`s${n}r${ri}a`, row.a);
+      if (row.t && cfg.rows[ri].hasTime) setVal(`s${n}r${ri}t`, row.t);
+    }
+  }
+}
+
+function clearAll() {
+  if (!confirm('全てのデータをクリアしますか？\nこの操作は取り消せません。')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch(_) {}
+  location.reload();
+}
+
+// ─────────────────────────────────────────────
+// Header display helpers
+// ─────────────────────────────────────────────
+
+function updateLatDisplay() {
+  const v = document.getElementById('obs-lat').value;
+  const el = document.getElementById('lat-display');
+  if (v === '') { el.textContent = ''; return; }
+  const deg = dms2deg(parseFloat(v));
+  el.textContent = isNaN(deg) ? 'エラー' : deg2dms(deg);
+}
+
+function updateLonDisplay() {
+  const v = document.getElementById('obs-lon').value;
+  const el = document.getElementById('lon-display');
+  if (v === '') { el.textContent = ''; return; }
+  const deg = dms2deg(parseFloat(v));
+  el.textContent = isNaN(deg) ? 'エラー' : deg2dms(deg);
+}
+
+// ─────────────────────────────────────────────
+// Utility DOM helpers
+// ─────────────────────────────────────────────
+
+function setText(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+function setVal(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.value = v;
+}
+
+// ─────────────────────────────────────────────
+// Debounce save
+// ─────────────────────────────────────────────
+
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveData, 500);
+}
+
+// ─────────────────────────────────────────────
+// Event wiring
+// ─────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function () {
+  buildSets();
+  loadData();
+  calcAll();
+
+  // Delegate all input events
+  document.addEventListener('input', function (e) {
+    const el = e.target;
+    const id = el.id || '';
+
+    if (el.dataset.s) {
+      // Observation field changed
+      calcAll();
+      scheduleSave();
+    } else if (id === 'obs-lat') {
+      updateLatDisplay();
+      scheduleSave();
+    } else if (id === 'obs-lon') {
+      updateLonDisplay();
+      scheduleSave();
+    } else if (id === 'north-web') {
+      const meanEl = document.getElementById('mean-ms');
+      // Re-derive mean from current display text to compute diff
+      // (simpler: just re-run calcAll which also calls updateDiff)
+      calcAll();
+      scheduleSave();
+    } else if (['obs-date','obs-point'].includes(id)) {
+      scheduleSave();
+    }
+  });
+
+  // Enter → move to next focusable
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    const focusable = Array.from(
+      document.querySelectorAll('input:not([disabled]):not([type="date"])')
+    );
+    const idx = focusable.indexOf(document.activeElement);
+    if (idx >= 0 && idx < focusable.length - 1) {
+      e.preventDefault();
+      focusable[idx + 1].focus();
+    }
+  });
+
+  // Focus → select-all for number and text time inputs
+  document.addEventListener('focusin', function (e) {
+    const el = e.target;
+    if (el.type === 'number' || el.classList.contains('t-time')) {
+      el.select();
+    }
+  });
+});
+</script>
+</body>
+</html>
