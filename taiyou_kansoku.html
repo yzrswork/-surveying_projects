@@ -297,6 +297,16 @@ input.is-error {
   margin: 4px 0;
 }
 
+/* Sets column wrappers (screen: stacked; print: side-by-side) */
+#sets-container {
+  display: flex;
+  flex-direction: column;
+}
+.sets-column {
+  display: flex;
+  flex-direction: column;
+}
+
 /* ── Print ── */
 @media print {
   @page { size: A4 portrait; margin: 10mm 12mm; }
@@ -355,16 +365,23 @@ input.is-error {
   .display-val { display: none !important; }
   button, .header-buttons, .clear-section { display: none !important; }
 
-  /* Sets container: 2-column layout (1-5 left, 6-10 right) */
+  /* 2-column layout for sets (1-5 left, 6-10 right) */
   #sets-container {
-    column-count: 2;
-    column-gap: 6mm;
-    column-fill: auto;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 6mm;
+    align-items: flex-start;
+  }
+  .sets-column {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Sets */
   .set-block {
-    margin: 0 0 2mm;
+    margin: 0;
     padding: 0;
     page-break-inside: avoid;
     break-inside: avoid;
@@ -412,12 +429,26 @@ input.is-error {
     line-height: 1.05;
     border: none;
     white-space: nowrap;
+    overflow: hidden;
   }
   /* Hide 変換値 column entirely on print (header at 6th + all c-calc cells) */
   .obs-table th:nth-child(6),
   .obs-table td.c-calc {
     display: none;
   }
+  /* Explicit column widths so c-time / c-angle screen widths don't bleed in */
+  .obs-table th:nth-child(1),
+  .obs-table td.c-rownum { width: 4mm; }
+  .obs-table th:nth-child(2),
+  .obs-table td.c-face   { width: 7mm; }
+  .obs-table th:nth-child(3),
+  .obs-table td.c-target { width: 9mm; }
+  .obs-table th:nth-child(4),
+  .obs-table td.c-time   { width: 22mm; }
+  .obs-table th:nth-child(5),
+  .obs-table td.c-angle  { width: 25mm; }
+  .obs-table th:nth-child(7),
+  .obs-table td.c-avg    { width: 23mm; }
   .obs-table td.c-avg {
     font-size: 5.5pt;
     font-weight: 600;
@@ -451,7 +482,7 @@ input.is-error {
     align-items: baseline;
     flex-wrap: nowrap;
     gap: 0;
-    padding: 0 2px;
+    padding: 0 1px;
     margin: 0;
     border-top: 0.3pt solid #ccc;
   }
@@ -660,14 +691,22 @@ function setCfg(n) {
 
 function buildSets() {
   const container = document.getElementById('sets-container');
+  const colLeft = document.createElement('div');
+  colLeft.className = 'sets-column sets-column-left';
+  const colRight = document.createElement('div');
+  colRight.className = 'sets-column sets-column-right';
   for (let n = 1; n <= 10; n++) {
-    if (n > 1) {
+    const targetCol = n <= 5 ? colLeft : colRight;
+    const isFirstInCol = (n === 1 || n === 6);
+    if (!isFirstInCol) {
       const hr = document.createElement('hr');
       hr.className = 'set-divider';
-      container.appendChild(hr);
+      targetCol.appendChild(hr);
     }
-    container.appendChild(makeSetBlock(n));
+    targetCol.appendChild(makeSetBlock(n));
   }
+  container.appendChild(colLeft);
+  container.appendChild(colRight);
 }
 
 function avgCell(n, ri, cfg) {
