@@ -267,12 +267,6 @@ input.is-error {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   color: var(--ink);
-  margin-right: 28px;
-}
-
-.set-summary .s-sep {
-  flex: 0 0 0;
-  margin-right: 4px;
 }
 
 .set-summary .ms-val {
@@ -284,6 +278,17 @@ input.is-error {
 
 .set-summary .ms-label {
   color: var(--ink-soft);
+}
+
+.set-summary .ms-group {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.set-summary .ms-group .s-label {
+  margin-right: 6px;
 }
 
 .set-divider {
@@ -449,7 +454,6 @@ input.is-error {
     font-family: 'JetBrains Mono', monospace;
     font-weight: 400;
     color: #000;
-    margin-right: 16px;
   }
   .set-summary .ms-val {
     font-size: 7pt;
@@ -458,6 +462,15 @@ input.is-error {
     margin-right: 0;
   }
   .set-summary .ms-label { color: #000; }
+  .set-summary .ms-group {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: baseline;
+    white-space: nowrap;
+  }
+  .set-summary .ms-group .s-label {
+    margin-right: 4px;
+  }
 }
 </style>
 </head>
@@ -714,9 +727,10 @@ function makeSetBlock(n) {
   summary.innerHTML =
     `<span class="s-label">T′（平均時刻）</span>` +
     `<span class="s-val" id="s${n}-tp">—</span>` +
-    `<span class="s-sep"></span>` +
-    `<span class="s-label ms-label">M − S</span>` +
-    `<span class="s-val ms-val" id="s${n}-ms">—</span>`;
+    `<span class="ms-group">` +
+      `<span class="s-label ms-label">M − S</span>` +
+      `<span class="s-val ms-val" id="s${n}-ms">—</span>` +
+    `</span>`;
   div.appendChild(summary);
 
   return div;
