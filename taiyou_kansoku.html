@@ -355,9 +355,16 @@ input.is-error {
   .display-val { display: none !important; }
   button, .header-buttons, .clear-section { display: none !important; }
 
+  /* Sets container: 2-column layout (1-5 left, 6-10 right) */
+  #sets-container {
+    column-count: 2;
+    column-gap: 6mm;
+    column-fill: auto;
+  }
+
   /* Sets */
   .set-block {
-    margin: 0;
+    margin: 0 0 2mm;
     padding: 0;
     page-break-inside: avoid;
     break-inside: avoid;
@@ -366,8 +373,9 @@ input.is-error {
     display: block !important;
     height: 0;
     border: none;
-    border-top: 0.3pt solid #999;
-    margin: 0;
+    border-top: 0.3pt solid #ccc;
+    margin: 1mm 0;
+    break-after: avoid;
   }
   .set-heading {
     padding: 0;
@@ -385,11 +393,12 @@ input.is-error {
   .obs-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 6pt;
+    font-size: 5.5pt;
     font-family: 'JetBrains Mono', monospace;
+    table-layout: fixed;
   }
   .obs-table th {
-    font-size: 5.5pt;
+    font-size: 5pt;
     padding: 0 1px;
     line-height: 1.1;
     border-bottom: 0.5pt solid #000;
@@ -398,24 +407,28 @@ input.is-error {
     font-weight: 400;
   }
   .obs-table td {
-    font-size: 6pt;
+    font-size: 5.5pt;
     padding: 0 1px;
     line-height: 1.05;
     border: none;
     white-space: nowrap;
   }
-  .obs-table td.c-calc { font-size: 6pt; font-weight: 400; }
+  /* Hide 変換値 column entirely on print (header at 6th + all c-calc cells) */
+  .obs-table th:nth-child(6),
+  .obs-table td.c-calc {
+    display: none;
+  }
   .obs-table td.c-avg {
-    font-size: 6pt;
+    font-size: 5.5pt;
     font-weight: 600;
     background: transparent !important;
-    padding-right: 4px;
+    padding-right: 2px;
   }
   .obs-table td.c-avg.c-flat {
     background: transparent !important;
   }
   .obs-table input {
-    font-size: 6pt;
+    font-size: 5.5pt;
     font-family: 'JetBrains Mono', monospace;
     padding: 0;
     background: transparent !important;
@@ -443,20 +456,20 @@ input.is-error {
     border-top: 0.3pt solid #ccc;
   }
   .set-summary .s-label {
-    font-size: 5.5pt;
+    font-size: 5pt;
     font-family: 'Noto Serif JP', serif;
     color: #444;
-    margin-right: 4px;
+    margin-right: 3px;
     white-space: nowrap;
   }
   .set-summary .s-val {
-    font-size: 6.5pt;
+    font-size: 6pt;
     font-family: 'JetBrains Mono', monospace;
     font-weight: 400;
     color: #000;
   }
   .set-summary .ms-val {
-    font-size: 7pt;
+    font-size: 6pt;
     font-weight: 600;
     color: #000;
     margin-right: 0;
@@ -469,7 +482,7 @@ input.is-error {
     white-space: nowrap;
   }
   .set-summary .ms-group .s-label {
-    margin-right: 4px;
+    margin-right: 3px;
   }
 }
 </style>
