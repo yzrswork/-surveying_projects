@@ -187,8 +187,8 @@ button:hover { background: var(--rule-faint); }
   width: 34px;
 }
 
-.obs-table td.c-time { width: 104px; }
-.obs-table td.c-angle { width: 126px; }
+.obs-table td.c-time { width: 96px; }
+.obs-table td.c-angle { width: 118px; }
 
 .obs-table td.c-calc {
   font-family: 'JetBrains Mono', monospace;
@@ -203,9 +203,23 @@ button:hover { background: var(--rule-faint); }
   font-size: 10px;
 }
 
+.obs-table td.c-avg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  font-weight: 500;
+  text-align: right;
+  padding-right: 10px;
+  width: 140px;
+  background: var(--accent-bg);
+}
+.obs-table td.c-avg.c-flat {
+  background: transparent;
+}
+
 /* ── Inputs inside table ── */
 input[type="text"].t-time,
-input[type="number"].t-angle {
+input[type="text"].t-angle {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   background: var(--input-bg);
@@ -218,12 +232,8 @@ input[type="number"].t-angle {
   transition: border-color 0.15s, background 0.15s;
 }
 
-input[type="number"].t-angle { -moz-appearance: textfield; }
-input[type="number"].t-angle::-webkit-inner-spin-button,
-input[type="number"].t-angle::-webkit-outer-spin-button { -webkit-appearance: none; }
-
 input[type="text"].t-time:focus,
-input[type="number"].t-angle:focus {
+input[type="text"].t-angle:focus {
   outline: none;
   border-bottom: 2px solid var(--ink);
   background: var(--input-bg-active);
@@ -237,7 +247,7 @@ input.is-error {
 /* ── Set summary ── */
 .set-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   padding: 8px 4px 4px;
   border-top: 1px solid var(--rule-faint);
@@ -270,97 +280,107 @@ input.is-error {
   margin: 4px 0;
 }
 
-/* ── Final results ── */
-.final-result {
-  margin-top: 32px;
-  padding: 20px 24px;
-  background: var(--accent-bg);
-  border-top: 2px solid var(--accent);
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-.final-result h2 {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.1em;
-  margin-bottom: 18px;
-}
-
-.result-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-
-.r-item { display: flex; flex-direction: column; gap: 5px; }
-
-.r-item label {
-  font-size: 10px;
-  color: var(--ink-faint);
-  letter-spacing: 0.05em;
-}
-
-.r-item .r-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.r-item input.r-input {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
-  font-weight: 600;
-  background: var(--input-bg);
-  border: none;
-  border-bottom: 1px solid var(--ink-faint);
-  padding: 2px 4px;
-  color: var(--ink);
-  width: 100%;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.r-item input.r-input:focus {
-  outline: none;
-  border-bottom: 2px solid var(--accent);
-  background: var(--input-bg-active);
-}
-
 /* ── Print ── */
 @media print {
-  @page { size: A4 portrait; margin: 15mm 12mm; }
+  @page { size: A4 portrait; margin: 8mm 10mm; }
 
-  body { font-size: 9pt; }
-
-  .container { padding: 0; max-width: 100%; }
-
-  .header-buttons { display: none; }
-
-  .doc-header { padding: 8px 0 6px; margin-bottom: 14px; }
-  .doc-header h1 { font-size: 13pt; margin-bottom: 10px; }
-
-  .header-info { gap: 12px; }
-
-  .set-block { margin-bottom: 8px; }
-
-  .obs-table th, .obs-table td { font-size: 8pt; padding: 1px 3px; }
-
-  .s-item .s-val { font-size: 8pt; }
-  .s-item.ms-highlight .s-val { font-size: 9pt; }
-
-  .final-result { margin-top: 16px; padding: 12px 16px; }
-  .r-item .r-val, .r-item input.r-input { font-size: 12pt; }
-
-  input[type="text"].t-time,
-  input[type="number"].t-angle,
-  .header-field input,
-  .r-item input.r-input {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-    background: var(--input-bg) !important;
+  body {
+    font-size: 8pt;
+    background: #ffffff;
   }
+
+  .container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* Header */
+  .doc-header {
+    padding: 4px 0 6px;
+    margin-bottom: 6px;
+    border-top: 1.5pt solid #000;
+    border-bottom: 0.5pt solid #000;
+  }
+  .doc-header h1 {
+    font-size: 12pt;
+    margin-bottom: 4px;
+    letter-spacing: 0.08em;
+  }
+  .header-info {
+    gap: 8px;
+    margin-bottom: 0;
+  }
+  .header-field label { font-size: 7pt; }
+  .header-field input {
+    font-size: 9pt;
+    padding: 1px 2px;
+    background: transparent !important;
+    border-bottom: 0.5pt solid #000;
+    font-weight: 400;
+  }
+  .display-val { display: none; }
+  .header-buttons { display: none !important; }
+
+  /* Sets */
+  .set-block {
+    margin-bottom: 2px;
+    page-break-inside: avoid;
+  }
+  .set-divider { display: none; }
+  .set-heading {
+    padding: 1px 0;
+    border-bottom: 0.5pt solid #000;
+  }
+  .set-num { font-size: 8.5pt; }
+  .set-meta { font-size: 7pt; }
+
+  /* Observation table */
+  .obs-table { font-size: 7.5pt; }
+  .obs-table th {
+    font-size: 6.5pt;
+    padding: 1px 2px;
+  }
+  .obs-table td {
+    padding: 0 2px;
+    line-height: 1.3;
+  }
+  .obs-table td.c-calc { font-size: 7pt; font-weight: 400; }
+  .obs-table td.c-avg {
+    font-size: 7.5pt;
+    font-weight: 500;
+    background: transparent !important;
+    padding-right: 4px;
+  }
+  .obs-table input {
+    font-size: 7.5pt;
+    padding: 0 1px;
+    background: transparent !important;
+    border: none;
+    font-weight: 400;
+  }
+  .obs-table input:focus { outline: none; }
+
+  /* Summary */
+  .set-summary {
+    padding: 1px 0;
+    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+    font-size: 7.5pt;
+    border-top: 0.3pt solid #000;
+  }
+  .s-label { font-size: 6.5pt; }
+  .s-val { font-size: 8pt; }
+  .s-item.ms-highlight .s-val { font-size: 9pt; color: #000; }
+
+  /* Strip remaining colour */
+  .obs-table input,
+  .header-field input,
+  input.is-error {
+    background: transparent !important;
+  }
+
+  button, .header-buttons { display: none !important; }
 }
 </style>
 </head>
@@ -399,25 +419,6 @@ input.is-error {
   <!-- ===== Observation sets (built by JS) ===== -->
   <div id="sets-container"></div>
 
-  <!-- ===== Final results ===== -->
-  <div class="final-result">
-    <h2>集計結果</h2>
-    <div class="result-grid">
-      <div class="r-item">
-        <label>方位角中数</label>
-        <div class="r-val" id="mean-ms">—</div>
-      </div>
-      <div class="r-item">
-        <label>真北方向角（WEB）</label>
-        <input type="text" id="north-web" class="r-input" placeholder="+0°00′38.85″">
-      </div>
-      <div class="r-item">
-        <label>差分（計算値 − WEB）</label>
-        <div class="r-val" id="diff-val">—</div>
-      </div>
-    </div>
-  </div>
-
 </div><!-- .container -->
 
 <script>
@@ -427,54 +428,59 @@ input.is-error {
 // Core math helpers
 // ─────────────────────────────────────────────
 
-/**
- * Convert DD.MMSSss → decimal degrees.
- * Algorithm exactly as specified to handle floating-point edge cases.
- */
 function dms2deg(x) {
   if (x == null || x === '' || isNaN(x)) return NaN;
   x = parseFloat(x);
   const d = Math.floor(x);
   const frac = (x - d) + 1e-6;
-  const mRaw = Math.floor(frac * 100) / 100;   // minutes as 0.MM
-  const mDeg = mRaw * 100 / 60;                // MM/60
-  const sRaw = x - Math.floor(x * 100) / 100;  // seconds fraction
-  const sDeg = sRaw * 10000 / 3600;            // SS/3600
+  const mRaw = Math.floor(frac * 100) / 100;
+  const mDeg = mRaw * 100 / 60;
+  const sRaw = x - Math.floor(x * 100) / 100;
+  const sDeg = sRaw * 10000 / 3600;
   return d + mDeg + sDeg;
 }
 
-/** Decimal degrees → "D°MM′SS.ss″" */
 function deg2dms(deg) {
   if (deg == null || isNaN(deg)) return '—';
   const sign = deg < 0 ? '-' : '';
   deg = Math.abs(deg);
   const d = Math.floor(deg);
   const mTot = (deg - d) * 60;
-  const m = Math.floor(mTot + 1e-9);           // epsilon avoids 59.9999… → 60
+  const m = Math.floor(mTot + 1e-9);
   const s = (mTot - m) * 60;
   const sStr = s.toFixed(2).padStart(5, '0');
   return `${sign}${d}°${String(m).padStart(2, '0')}′${sStr}″`;
 }
 
-/** "HH:MM:SS" (or "HH:MM") → day fraction */
-function time2serial(t) {
-  if (!t || typeof t !== 'string') return NaN;
-  const p = t.split(':');
-  if (p.length < 2) return NaN;
-  const h = parseInt(p[0], 10) || 0;
-  const mi = parseInt(p[1], 10) || 0;
-  const s  = p.length > 2 ? (parseInt(p[2], 10) || 0) : 0;
-  return (h * 3600 + mi * 60 + s) / 86400;
+/** "H.MMSS" (period-separated) → day fraction */
+function timeStr2serial(x) {
+  if (x == null || x === '') return NaN;
+  const str = String(x).trim();
+  if (!/^\d{1,2}\.\d{4}$/.test(str)) return NaN;
+  const [hStr, frac] = str.split('.');
+  const h  = parseInt(hStr, 10);
+  const mm = parseInt(frac.slice(0, 2), 10);
+  const ss = parseInt(frac.slice(2, 4), 10);
+  if (h < 0 || h > 23)  return NaN;
+  if (mm < 0 || mm > 59) return NaN;
+  if (ss < 0 || ss > 59) return NaN;
+  return (h * 3600 + mm * 60 + ss) / 86400;
 }
 
-/** Day fraction → "HH:MM:SS" */
-function serial2time(serial) {
-  if (isNaN(serial)) return '—';
-  const tot = Math.round(serial * 86400);
-  const h = Math.floor(tot / 3600);
-  const m = Math.floor((tot % 3600) / 60);
-  const s = tot % 60;
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+/** Day fraction → "HH:MM:SS.ss" (fractional seconds, 2 decimals) */
+function serial2timeFrac(s) {
+  if (s == null || isNaN(s)) return '—';
+  const total = s * 86400;
+  let h   = Math.floor(total / 3600);
+  let m   = Math.floor((total - h * 3600) / 60);
+  let sec = total - h * 3600 - m * 60;
+  if (sec >= 59.995) {
+    sec = 0;
+    m += 1;
+    if (m >= 60) { m = 0; h += 1; }
+  }
+  const secStr = sec.toFixed(2).padStart(5, '0');
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${secStr}`;
 }
 
 function norm360(x) { return ((x % 360) + 360) % 360; }
@@ -485,31 +491,22 @@ function validateDmsStr(v) {
   const x = parseFloat(v);
   if (isNaN(x) || x < 0 || x >= 360) return false;
   const d   = Math.floor(x);
-  const mm  = Math.floor((x - d + 1e-6) * 100);   // minutes integer 0..99
-  const ss  = Math.round(((x - Math.floor(x * 100) / 100)) * 10000); // seconds integer 0..99
+  const mm  = Math.floor((x - d + 1e-6) * 100);
+  const ss  = Math.round(((x - Math.floor(x * 100) / 100)) * 10000);
   if (mm > 59 || ss > 59) return false;
   return true;
+}
+
+/** Validate H.MMSS time string */
+function validateTimeStr(v) {
+  if (v === '' || v == null) return true;
+  return !isNaN(timeStr2serial(v));
 }
 
 // ─────────────────────────────────────────────
 // Set configuration
 // ─────────────────────────────────────────────
 
-/*
-  Row layout per set:
-    Odd  (r,l): r-m | r-s | r-s | l-s | l-s | l-m
-    Even (l,r): l-m | l-s | l-s | r-s | r-s | r-m
-
-  mr index (正位置後視):
-    Odd  → row 0   Even → row 5
-  ml index (反位置後視):
-    Odd  → row 5   Even → row 0
-  Solar row indices (all sets rows 1..4 are solar):
-    all = [1,2,3,4]
-  ±360 judgment uses the first r-s reading:
-    Odd  → row 1   Even → row 3
-  Time rows (s observations): [1,2,3,4]
-*/
 function setCfg(n) {
   const odd = (n % 2 === 1);
   const rows = odd
@@ -537,7 +534,7 @@ function setCfg(n) {
     mrIdx:    odd ? 0 : 5,
     mlIdx:    odd ? 5 : 0,
     sIdxs:    [1, 2, 3, 4],
-    judgeIdx: odd ? 1 : 3,   // first r-s for ±360 decision
+    judgeIdx: odd ? 1 : 3,
     timeIdxs: [1, 2, 3, 4],
   };
 }
@@ -558,13 +555,22 @@ function buildSets() {
   }
 }
 
+function avgCell(n, ri, cfg) {
+  const isTopM = (ri === 0);
+  const isBotM = (ri === 5);
+  const isMsRow = (cfg.odd && ri === 1) || (!cfg.odd && ri === 4);
+  if (isTopM)  return `<td class="c-avg" id="s${n}-mm-top"></td>`;
+  if (isBotM)  return `<td class="c-avg" id="s${n}-mm-bot"></td>`;
+  if (isMsRow) return `<td class="c-avg" id="s${n}-ms-cell"></td>`;
+  return `<td class="c-avg c-flat"></td>`;
+}
+
 function makeSetBlock(n) {
   const cfg = setCfg(n);
   const div = document.createElement('div');
   div.className = 'set-block';
   div.id = `set${n}`;
 
-  // Heading
   const heading = document.createElement('div');
   heading.className = 'set-heading';
   heading.innerHTML =
@@ -572,13 +578,12 @@ function makeSetBlock(n) {
     `<span class="set-meta">輪郭 ${cfg.rotation}°　${cfg.order}</span>`;
   div.appendChild(heading);
 
-  // Table
   const tbl = document.createElement('table');
   tbl.className = 'obs-table';
   tbl.innerHTML =
     `<thead><tr>` +
     `<th>行</th><th>正反</th><th>目標</th>` +
-    `<th>時　刻</th><th>観測角（度.分秒）</th><th>変換値</th>` +
+    `<th>時　刻</th><th>観測角（度.分秒）</th><th>変換値</th><th>正反の平均</th>` +
     `</tr></thead>`;
   const tbody = document.createElement('tbody');
 
@@ -590,32 +595,34 @@ function makeSetBlock(n) {
 
     const timeCell = row.hasTime
       ? `<td class="c-time"><input type="text" class="t-time"
-           id="s${n}r${ri}t" placeholder="HH:MM:SS"
+           id="s${n}r${ri}t" placeholder="H.MMSS"
            data-s="${n}" data-r="${ri}" data-f="t"
            tabindex="${tabBase}"></td>`
       : `<td class="c-time c-nodash">—</td>`;
+
+    const angleCell = row.tgt === 'm' || row.tgt === 's'
+      ? `<td class="c-angle"><input type="text" class="t-angle" inputmode="decimal"
+           id="s${n}r${ri}a" placeholder="0.0000"
+           data-s="${n}" data-r="${ri}" data-f="a"
+           tabindex="${tabBase + 1}"></td>`
+      : `<td class="c-angle"></td>`;
 
     tr.innerHTML =
       `<td class="c-rownum">${ri + 1}</td>` +
       `<td class="c-face">${faceLabel}</td>` +
       `<td class="c-target">${tgtLabel}</td>` +
       timeCell +
-      `<td class="c-angle"><input type="number" class="t-angle" step="0.0001"
-         id="s${n}r${ri}a" placeholder="0.0000"
-         data-s="${n}" data-r="${ri}" data-f="a"
-         tabindex="${tabBase + 1}"></td>` +
-      `<td class="c-calc" id="s${n}r${ri}c"></td>`;
+      angleCell +
+      `<td class="c-calc" id="s${n}r${ri}c"></td>` +
+      avgCell(n, ri, cfg);
     tbody.appendChild(tr);
   });
   tbl.appendChild(tbody);
   div.appendChild(tbl);
 
-  // Summary
   const summary = document.createElement('div');
   summary.className = 'set-summary';
   summary.innerHTML =
-    `<div class="s-item"><div class="s-label">M<sub>m</sub>（後視標平均）</div><div class="s-val" id="s${n}-mm">—</div></div>` +
-    `<div class="s-item"><div class="s-label">M<sub>s</sub>（太陽平均）</div><div class="s-val" id="s${n}-msv">—</div></div>` +
     `<div class="s-item"><div class="s-label">T′（平均時刻）</div><div class="s-val" id="s${n}-tp">—</div></div>` +
     `<div class="s-item ms-highlight"><div class="s-label">M − S</div><div class="s-val" id="s${n}-ms">—</div></div>`;
   div.appendChild(summary);
@@ -639,27 +646,30 @@ function getTime(n, ri) {
 function calcSet(n) {
   const cfg = setCfg(n);
 
-  // Raw angle strings
   const aStr = Array.from({length:6}, (_, ri) => getAngle(n, ri));
 
-  // Validate & mark errors
   aStr.forEach((v, ri) => {
     const el = document.getElementById(`s${n}r${ri}a`);
     if (!el) return;
     el.classList.toggle('is-error', v !== '' && !validateDmsStr(v));
   });
 
-  // Convert to decimal degrees
+  cfg.timeIdxs.forEach(ri => {
+    const el = document.getElementById(`s${n}r${ri}t`);
+    if (!el) return;
+    const v = el.value.trim();
+    el.classList.toggle('is-error', v !== '' && !validateTimeStr(v));
+  });
+
   const degs = aStr.map(v => v === '' ? NaN : dms2deg(parseFloat(v)));
 
-  // Update conversion display cells
   degs.forEach((deg, ri) => {
     const cell = document.getElementById(`s${n}r${ri}c`);
     if (!cell) return;
     if (aStr[ri] === '') {
       cell.textContent = '';
       cell.style.color = '';
-    } else if (isNaN(deg)) {
+    } else if (isNaN(deg) || !validateDmsStr(aStr[ri])) {
       cell.textContent = 'エラー';
       cell.style.color = 'var(--error)';
     } else {
@@ -668,7 +678,7 @@ function calcSet(n) {
     }
   });
 
-  // ── M_m ──
+  // M_m
   const mrDeg = degs[cfg.mrIdx];
   const mlDeg = degs[cfg.mlIdx];
   let Mm = NaN;
@@ -676,92 +686,58 @@ function calcSet(n) {
     Mm = norm360(((mrDeg + mlDeg) - 180) / 2);
   }
 
-  // ── M_s with ±360 correction ──
+  // M_s with ±360 correction
   const sDegs = cfg.sIdxs.map(i => degs[i]);
   let Ms = NaN;
   if (sDegs.every(v => !isNaN(v))) {
     const sSum = sDegs.reduce((a, b) => a + b, 0);
-    // Judge on raw input of first r-s observation
     const judgeRaw = parseFloat(aStr[cfg.judgeIdx]);
     const correction = (!isNaN(judgeRaw) && judgeRaw < 180) ? -360 : +360;
     Ms = norm360((sSum + correction) / 4);
   }
 
-  // ── T' (mean of 4 solar times) ──
-  const tSerials = cfg.timeIdxs.map(ri => time2serial(getTime(n, ri)));
+  // T' (mean of 4 solar times)
+  const tSerials = cfg.timeIdxs.map(ri => timeStr2serial(getTime(n, ri)));
   let Tp = NaN;
   if (tSerials.every(v => !isNaN(v))) {
     Tp = tSerials.reduce((a, b) => a + b, 0) / 4;
   }
 
-  // ── M-S ──
+  // M-S
   let MS = NaN;
   if (!isNaN(Mm) && !isNaN(Ms)) {
     MS = norm360(Mm - Ms);
   }
 
-  // Update display
-  setText(`s${n}-mm`,  isNaN(Mm) ? '—' : deg2dms(Mm));
-  setText(`s${n}-msv`, isNaN(Ms) ? '—' : deg2dms(Ms));
-  setText(`s${n}-tp`,  isNaN(Tp) ? '—' : serial2time(Tp));
-  setText(`s${n}-ms`,  isNaN(MS) ? '—' : deg2dms(MS));
+  const mmStr = isNaN(Mm) ? '' : deg2dms(Mm);
+  const msStr = isNaN(Ms) ? '' : deg2dms(Ms);
+  setText(`s${n}-mm-top`,  mmStr);
+  setText(`s${n}-mm-bot`,  mmStr);
+  setText(`s${n}-ms-cell`, msStr);
+  setText(`s${n}-tp`,      isNaN(Tp) ? '—' : serial2timeFrac(Tp));
+  setText(`s${n}-ms`,      isNaN(MS) ? '—' : deg2dms(MS));
 
   return MS;
 }
 
 function calcAll() {
-  const msVals = [];
   for (let n = 1; n <= 10; n++) {
-    const ms = calcSet(n);
-    if (!isNaN(ms)) msVals.push(ms);
+    calcSet(n);
   }
-
-  let mean = NaN;
-  if (msVals.length > 0) {
-    mean = msVals.reduce((a, b) => a + b, 0) / msVals.length;
-  }
-
-  setText('mean-ms', isNaN(mean) ? '—' : deg2dms(mean));
-  updateDiff(mean);
-}
-
-function updateDiff(mean) {
-  const webStr = document.getElementById('north-web').value.trim();
-  setText('diff-val', '—');
-  if (isNaN(mean) || webStr === '') return;
-
-  // Parse WEB value: accepts "±D°MM′SS.ss″" or plain decimal degrees
-  // Try to parse DMS notation e.g. "+1°23′45.67″" or "-0°05′12.00″"
-  const dmsMatch = webStr.match(/^([+-]?)\s*(\d+)°(\d+)′([\d.]+)″?$/);
-  let webDeg = NaN;
-  if (dmsMatch) {
-    const sign = dmsMatch[1] === '-' ? -1 : 1;
-    const d = parseInt(dmsMatch[2], 10);
-    const m = parseInt(dmsMatch[3], 10);
-    const s = parseFloat(dmsMatch[4]);
-    webDeg = sign * (d + m/60 + s/3600);
-  } else {
-    webDeg = parseFloat(webStr);
-  }
-
-  if (isNaN(webDeg)) return;
-  const diff = mean - webDeg;
-  setText('diff-val', deg2dms(diff));
 }
 
 // ─────────────────────────────────────────────
 // Persistence (localStorage)
 // ─────────────────────────────────────────────
 
-const STORAGE_KEY = 'taiyou_kansoku_data_v1';
+const STORAGE_KEY = 'taiyou_kansoku_data_v3';
 
 function saveData() {
   const data = {
-    date:     document.getElementById('obs-date').value,
-    lat:      document.getElementById('obs-lat').value,
-    lon:      document.getElementById('obs-lon').value,
-    point:    document.getElementById('obs-point').value,
-    northWeb: document.getElementById('north-web').value,
+    date:  document.getElementById('obs-date').value,
+    lat:   document.getElementById('obs-lat').value,
+    lon:   document.getElementById('obs-lon').value,
+    point: document.getElementById('obs-point').value,
     sets: {},
   };
   for (let n = 1; n <= 10; n++) {
@@ -784,11 +760,10 @@ function loadData() {
   let data;
   try { data = JSON.parse(raw); } catch(_) { return; }
 
-  if (data.date)     setVal('obs-date',  data.date);
-  if (data.lat)      setVal('obs-lat',   data.lat);
-  if (data.lon)      setVal('obs-lon',   data.lon);
-  if (data.point)    setVal('obs-point', data.point);
-  if (data.northWeb) setVal('north-web', data.northWeb);
+  if (data.date)  setVal('obs-date',  data.date);
+  if (data.lat)   setVal('obs-lat',   data.lat);
+  if (data.lon)   setVal('obs-lon',   data.lon);
+  if (data.point) setVal('obs-point', data.point);
 
   updateLatDisplay();
   updateLonDisplay();
@@ -864,13 +839,11 @@ document.addEventListener('DOMContentLoaded', function () {
   loadData();
   calcAll();
 
-  // Delegate all input events
   document.addEventListener('input', function (e) {
     const el = e.target;
     const id = el.id || '';
 
     if (el.dataset.s) {
-      // Observation field changed
       calcAll();
       scheduleSave();
     } else if (id === 'obs-lat') {
@@ -879,18 +852,11 @@ document.addEventListener('DOMContentLoaded', function () {
     } else if (id === 'obs-lon') {
       updateLonDisplay();
       scheduleSave();
-    } else if (id === 'north-web') {
-      const meanEl = document.getElementById('mean-ms');
-      // Re-derive mean from current display text to compute diff
-      // (simpler: just re-run calcAll which also calls updateDiff)
-      calcAll();
-      scheduleSave();
     } else if (['obs-date','obs-point'].includes(id)) {
       scheduleSave();
     }
   });
 
-  // Enter → move to next focusable
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') return;
     const focusable = Array.from(
@@ -903,10 +869,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
-  // Focus → select-all for number and text time inputs
   document.addEventListener('focusin', function (e) {
     const el = e.target;
-    if (el.type === 'number' || el.classList.contains('t-time')) {
+    if (el.type === 'number' || el.classList.contains('t-time') || el.classList.contains('t-angle')) {
       el.select();
     }
   });
