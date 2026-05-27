@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<!--
+  高低測量計算アプリ v1.0
+
+  使い方:
+    1. 共通設定で始点ラベル・KBM割当点・KBM標高を設定
+    2. 各区間の観測値(SD/IH/TH/鉛直角正反)を入力
+    3. 「+ 区間を追加」で区間を増やせる(最大15)
+    4. 「計算する」で結果一覧と各区間の高低差を表示
+    5. 「結果をコピー」でスプレッドシート貼付用にコピー
+
+  鉛直角の入力形式: 度.分分秒秒 (例: 90.3045 = 90°30′45″)
+  反観測値は内部で (360 - L) として正換算
+
+  動作確認: URL末尾に #test を付けて開くとテストモード
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<title>高低測量計算</title>
+<style>
+:root {
+  --bg:          #fff8f1;
+  --surface:     #ffffff;
+  --surface-2:   #fdf1e3;
+  --border:      #e8d4bc;
+  --border-strong: #d4a574;
+  --text:        #3a2418;
+  --text-dim:    #8a6f5a;
+  --accent:      #e87722;
+  --accent-hover:#d96820;
+  --accent-soft: #fbe5cf;
+  --success:     #5a8a3f;
+  --danger:      #c44536;
+  --warn:        #b8860b;
+  --mono: 'SF Mono', 'Menlo', 'Consolas', 'Roboto Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans',
+               'Yu Gothic Medium', 'Noto Sans JP', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+header.card {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+}
+
+header h1 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+header h1 .mark {
+  color: var(--accent);
+  font-size: 22px;
+}
+
+header .subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.card h2 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.field:last-child { margin-bottom: 0; }
+
+.field label {
+  flex: 0 0 110px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.field label .hint {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.field input,
+.field select {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 12px;
+  font-size: 16px;
+  font-family: var(--mono);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.field select {
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+                    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 18px, calc(100% - 13px) 18px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(232, 119, 34, 0.18);
+}
+
+.field input[readonly] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.field input.error {
+  border-color: var(--danger);
+  background: #fff0ee;
+  box-shadow: 0 0 0 3px rgba(196, 69, 54, 0.15);
+}
+
+.segment {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--surface);
+}
+
+.segment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.segment-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  flex: 1;
+  min-width: 0;
+}
+
+.segment-title .num {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.segment-title .from {
+  font-family: var(--mono);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.segment-title .arrow {
+  color: var(--text-dim);
+}
+
+.segment-title .to-input {
+  width: 80px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 14px;
+  font-family: var(--mono);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-weight: 600;
+  outline: none;
+}
+
+.segment-title .to-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.btn-del {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-del:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-del:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.segment-result {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.segment-result .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.segment-result .row .label {
+  color: var(--text-dim);
+}
+
+.segment-result .row .val {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.segment-result .row .val.adopted {
+  color: var(--accent-hover);
+}
+
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0 16px;
+  height: 40px;
+  transition: background 0.15s;
+}
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--accent-hover);
+  border: 1px solid var(--border-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  width: 100%;
+  height: 48px;
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  width: 100%;
+}
+
+.btn-ghost:hover { color: var(--danger); border-color: var(--danger); }
+
+.add-segment {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.error-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--danger);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(196, 69, 54, 0.3);
+}
+
+.warn-banner {
+  background: #fff5e0;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.hidden { display: none !important; }
+
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+table.results th,
+table.results td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+table.results th {
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+table.results th:first-child,
+table.results td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+}
+
+table.results tr.kbm-row {
+  background: var(--accent-soft);
+}
+
+table.results .kbm-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.summary {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.summary .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.summary .row .label {
+  color: var(--text-dim);
+}
+
+.summary .row .val {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.summary .row .val.ok { color: var(--success); }
+.summary .row .val.ng { color: var(--danger); }
+
+.test-results {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.test-results h3 {
+  margin: 0 0 8px 0;
+  color: var(--accent-hover);
+  font-size: 14px;
+}
+
+.test-results .case { padding: 3px 0; }
+.test-results .pass { color: var(--success); }
+.test-results .fail { color: var(--danger); font-weight: bold; }
+
+@media (max-width: 420px) {
+  .field label { flex: 0 0 95px; font-size: 12px; }
+  .field input, .field select { font-size: 16px; }
+  .app { padding: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header class="card">
+  <h1><span class="mark">△</span> 高低測量計算</h1>
+  <p class="subtitle">cos(V)·SD + IH − TH  /  累積→KBM補正</p>
+</header>
+
+<div id="error-banner" class="error-banner hidden" role="alert"></div>
+
+<section class="card">
+  <h2>共通設定</h2>
+  <div class="field">
+    <label for="startLabel">始点ラベル</label>
+    <input type="text" id="startLabel" maxlength="10" value="M1">
+  </div>
+  <div class="field">
+    <label for="kbmPoint">KBM割当点</label>
+    <select id="kbmPoint"></select>
+  </div>
+  <div class="field">
+    <label for="kbmElev">KBM標高(m)<span class="hint">基準標高</span></label>
+    <input type="text" id="kbmElev" inputmode="decimal" value="10.0000">
+  </div>
+</section>
+
+<section class="card">
+  <h2>観測区間</h2>
+  <div id="segments"></div>
+  <button id="addBtn" class="btn btn-secondary add-segment" type="button">+ 区間を追加</button>
+</section>
+
+<button id="calcBtn" class="btn btn-primary" type="button">計算する</button>
+
+<section id="resultsCard" class="card hidden">
+  <h2>結果一覧</h2>
+  <div id="dirtyWarn" class="warn-banner hidden">⚠ 入力が変更されています。再計算してください</div>
+  <table class="results" id="resultsTable">
+    <thead>
+      <tr>
+        <th>点名</th>
+        <th>累積高低差(m)</th>
+        <th>仮標高(m)</th>
+        <th>確定標高(m)</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+  </table>
+  <div class="summary" id="summary"></div>
+  <button id="copyBtn" class="btn btn-secondary" type="button" style="width:100%">結果をコピー</button>
+</section>
+
+<button id="resetBtn" class="btn btn-ghost" type="button" aria-label="入力をリセット">入力をリセット</button>
+
+<div id="testResults"></div>
+
+</div>
+
+<script>
+// === 1. 状態管理 ===
+const MAX_SEGMENTS = 15;
+
+const state = {
+  startLabel: 'M1',
+  kbmPoint: 'M1',
+  kbmElevation: 10.0000,
+  segments: [
+    { endLabel: 'T1', sd: '', ih: '', th: '', vR: '', vL: '' }
+  ],
+  results: null,
+  isDirty: false
+};
+
+// === 2. 計算ロジック ===
+
+// 度.分分秒秒 文字列 → 10進度。文字列処理で実装(浮動小数誤差回避)
+function dmsToDecimal(str) {
+  const s = String(str).trim();
+  if (s === '') throw new Error('鉛直角を入力してください');
+  if (!/^-?\d+(\.\d*)?$/.test(s)) throw new Error('鉛直角の形式が正しくありません');
+  if (s.startsWith('-')) throw new Error('鉛直角は0以上で入力してください');
+  const parts = s.split('.');
+  const deg = parseInt(parts[0], 10);
+  if (!Number.isFinite(deg)) throw new Error('鉛直角の形式が正しくありません');
+  if (deg < 0) throw new Error('鉛直角は0以上で入力してください');
+  if (deg > 360) throw new Error('鉛直角は360以下で入力してください');
+  let min = 0, sec = 0;
+  if (parts.length > 1 && parts[1].length > 0) {
+    const frac = (parts[1] + '0000').slice(0, 4);
+    min = parseInt(frac.slice(0, 2), 10);
+    sec = parseInt(frac.slice(2, 4), 10);
+  }
+  if (min >= 60) throw new Error('分は59以下で入力してください');
+  if (sec >= 60) throw new Error('秒は59以下で入力してください');
+  return deg + min / 60 + sec / 3600;
+}
+
+// 1区間の正反平均ΔH・水平距離。戻り値: {dhR, dhL, dh, hd, diffMm, vDecR, vDecL}
+function computeSegment(seg) {
+  const sd = parseFloat(seg.sd);
+  const ih = parseFloat(seg.ih);
+  const th = parseFloat(seg.th);
+  const hasR = String(seg.vR).trim() !== '';
+  const hasL = String(seg.vL).trim() !== '';
+  let vDecR = null, vDecL = null;
+  let dhR = null, dhL = null;
+  let hdR = null, hdL = null;
+  if (hasR) {
+    vDecR = dmsToDecimal(seg.vR);
+    const rad = vDecR * Math.PI / 180;
+    dhR = Math.cos(rad) * sd + ih - th;
+    hdR = Math.sin(rad) * sd;
+  }
+  if (hasL) {
+    vDecL = dmsToDecimal(seg.vL);
+    const corrected = 360 - vDecL;
+    const rad = corrected * Math.PI / 180;
+    dhL = Math.cos(rad) * sd + ih - th;
+    hdL = Math.sin(rad) * sd;
+  }
+  let dh, hd, diffMm = null;
+  if (hasR && hasL) {
+    dh = (dhR + dhL) / 2;
+    hd = (hdR + hdL) / 2;
+    diffMm = Math.abs(dhR - dhL) * 1000;
+  } else if (hasR) {
+    dh = dhR; hd = hdR;
+  } else {
+    dh = dhL; hd = hdL;
+  }
+  return { dhR, dhL, dh, hd, diffMm, vDecR, vDecL };
+}
+
+// 全区間+標高確定
+function computeAll(state) {
+  const segResults = state.segments.map(computeSegment);
+
+  // 累積高低差
+  const points = [];
+  let cum = 0;
+  points.push({ label: state.startLabel, cum: 0 });
+  for (let i = 0; i < state.segments.length; i++) {
+    cum += segResults[i].dh;
+    points.push({ label: state.segments[i].endLabel, cum });
+  }
+
+  // KBM補正
+  const kbmIdx = points.findIndex(p => p.label === state.kbmPoint);
+  const kbmCum = kbmIdx >= 0 ? points[kbmIdx].cum : 0;
+  const kbmElev = state.kbmElevation;
+  for (const p of points) {
+    p.elev = kbmElev + (p.cum - kbmCum);
+  }
+
+  // 総水平距離
+  const totalHd = segResults.reduce((a, r) => a + r.hd, 0);
+
+  // 閉合判定
+  const isClosed = state.segments.length > 0 &&
+    state.segments[state.segments.length - 1].endLabel === state.startLabel;
+
+  let closure = null;
+  if (isClosed) {
+    const closureMm = Math.abs(points[points.length - 1].cum) * 1000;
+    const sKm = totalHd / 1000;
+    const allowMm = 10 * Math.sqrt(sKm);
+    closure = {
+      closureMm,
+      allowMm,
+      ok: closureMm <= allowMm
+    };
+  }
+
+  return { segResults, points, totalHd, isClosed, closure, kbmIdx };
+}
+
+// === 3. バリデーション ===
+// {ok, errorMsg, errorTarget: {segIdx, field}}
+function validate(state) {
+  // KBM標高
+  const elev = parseFloat(state.kbmElevation);
+  if (!Number.isFinite(elev)) {
+    return { ok: false, errorMsg: 'KBM標高に数値を入力してください', errorTarget: { common: 'kbmElev' } };
+  }
+
+  for (let i = 0; i < state.segments.length; i++) {
+    const seg = state.segments[i];
+    const n = i + 1;
+
+    // SD
+    if (String(seg.sd).trim() === '') {
+      return { ok: false, errorMsg: `区間${n}: 斜距離を入力してください`, errorTarget: { segIdx: i, field: 'sd' } };
+    }
+    const sd = parseFloat(seg.sd);
+    if (!Number.isFinite(sd) || sd <= 0) {
+      return { ok: false, errorMsg: `区間${n}: 斜距離は0より大きい値を入力してください`, errorTarget: { segIdx: i, field: 'sd' } };
+    }
+    // IH
+    if (String(seg.ih).trim() === '') {
+      return { ok: false, errorMsg: `区間${n}: 器械高を入力してください`, errorTarget: { segIdx: i, field: 'ih' } };
+    }
+    const ih = parseFloat(seg.ih);
+    if (!Number.isFinite(ih) || ih < 0) {
+      return { ok: false, errorMsg: `区間${n}: 器械高は0以上の数値を入力してください`, errorTarget: { segIdx: i, field: 'ih' } };
+    }
+    // TH
+    if (String(seg.th).trim() === '') {
+      return { ok: false, errorMsg: `区間${n}: 目標高を入力してください`, errorTarget: { segIdx: i, field: 'th' } };
+    }
+    const th = parseFloat(seg.th);
+    if (!Number.isFinite(th) || th < 0) {
+      return { ok: false, errorMsg: `区間${n}: 目標高は0以上の数値を入力してください`, errorTarget: { segIdx: i, field: 'th' } };
+    }
+    // 鉛直角
+    const hasR = String(seg.vR).trim() !== '';
+    const hasL = String(seg.vL).trim() !== '';
+    if (!hasR && !hasL) {
+      return { ok: false, errorMsg: `区間${n}: 鉛直角を正R・反Lのいずれか入力してください`, errorTarget: { segIdx: i, field: 'vR' } };
+    }
+    try {
+      if (hasR) dmsToDecimal(seg.vR);
+    } catch (e) {
+      return { ok: false, errorMsg: `区間${n} 鉛直角正R: ${e.message}`, errorTarget: { segIdx: i, field: 'vR' } };
+    }
+    try {
+      if (hasL) dmsToDecimal(seg.vL);
+    } catch (e) {
+      return { ok: false, errorMsg: `区間${n} 鉛直角反L: ${e.message}`, errorTarget: { segIdx: i, field: 'vL' } };
+    }
+  }
+  return { ok: true };
+}
+
+// === 数値フォーマット ===
+function fmt4(v) {
+  if (!Number.isFinite(v)) return '----';
+  return v.toFixed(4);
+}
+function signed4(v) {
+  if (!Number.isFinite(v)) return '----';
+  if (Object.is(v, -0)) v = 0;
+  // -0.00001 などが "-0.0000" にならないように丸め後判定
+  const rounded = Math.round(v * 10000) / 10000;
+  const sign = rounded >= 0 ? '+' : '-';
+  return sign + Math.abs(rounded).toFixed(4);
+}
+function fmt1(v) {
+  if (!Number.isFinite(v)) return '----';
+  return v.toFixed(1);
+}
+
+// === 4. UI生成・更新 ===
+
+const els = {
+  startLabel: document.getElementById('startLabel'),
+  kbmPoint: document.getElementById('kbmPoint'),
+  kbmElev: document.getElementById('kbmElev'),
+  segments: document.getElementById('segments'),
+  addBtn: document.getElementById('addBtn'),
+  calcBtn: document.getElementById('calcBtn'),
+  resetBtn: document.getElementById('resetBtn'),
+  copyBtn: document.getElementById('copyBtn'),
+  resultsCard: document.getElementById('resultsCard'),
+  resultsBody: document.getElementById('resultsBody'),
+  summary: document.getElementById('summary'),
+  errorBanner: document.getElementById('error-banner'),
+  dirtyWarn: document.getElementById('dirtyWarn'),
+  testResults: document.getElementById('testResults')
+};
+
+function getStartLabelFor(idx) {
+  return idx === 0 ? state.startLabel : state.segments[idx - 1].endLabel;
+}
+
+function renderSegments() {
+  const html = state.segments.map((seg, i) => {
+    const startLbl = getStartLabelFor(i);
+    const delDisabled = state.segments.length === 1;
+    return `
+      <div class="segment" data-seg="${i}">
+        <div class="segment-header">
+          <div class="segment-title">
+            <span class="num">区間${i + 1}</span>
+            <span class="from">${escapeHtml(startLbl)}</span>
+            <span class="arrow">→</span>
+            <input type="text" class="to-input" data-field="endLabel" data-seg="${i}"
+                   value="${escapeAttr(seg.endLabel)}" maxlength="10"
+                   aria-label="区間${i + 1} 終点ラベル">
+          </div>
+          <button type="button" class="btn-del" data-action="del" data-seg="${i}"
+                  ${delDisabled ? 'disabled' : ''} aria-label="区間${i + 1}を削除">×</button>
+        </div>
+        <div class="field">
+          <label for="sd-${i}">斜距離SD(m)</label>
+          <input type="text" id="sd-${i}" inputmode="decimal" data-field="sd" data-seg="${i}" value="${escapeAttr(seg.sd)}">
+        </div>
+        <div class="field">
+          <label for="ih-${i}">器械高IH(m)</label>
+          <input type="text" id="ih-${i}" inputmode="decimal" data-field="ih" data-seg="${i}" value="${escapeAttr(seg.ih)}">
+        </div>
+        <div class="field">
+          <label for="th-${i}">目標高TH(m)</label>
+          <input type="text" id="th-${i}" inputmode="decimal" data-field="th" data-seg="${i}" value="${escapeAttr(seg.th)}">
+        </div>
+        <div class="field">
+          <label for="vr-${i}">鉛直角 正R<span class="hint">度.分分秒秒</span></label>
+          <input type="text" id="vr-${i}" inputmode="decimal" data-field="vR" data-seg="${i}" value="${escapeAttr(seg.vR)}" placeholder="例: 89.3045">
+        </div>
+        <div class="field">
+          <label for="vl-${i}">鉛直角 反L<span class="hint">度.分分秒秒</span></label>
+          <input type="text" id="vl-${i}" inputmode="decimal" data-field="vL" data-seg="${i}" value="${escapeAttr(seg.vL)}" placeholder="例: 270.2915">
+        </div>
+        <div class="segment-result" data-result="${i}"></div>
+      </div>
+    `;
+  }).join('');
+  els.segments.innerHTML = html;
+  els.addBtn.disabled = state.segments.length >= MAX_SEGMENTS;
+}
+
+function renderKbmDropdown() {
+  const labels = [state.startLabel, ...state.segments.map(s => s.endLabel)];
+  // dedupe (閉合トラバースの場合 始点=終点だが選択肢としては1個でよい)
+  const seen = new Set();
+  const unique = [];
+  for (const l of labels) {
+    if (!seen.has(l)) { seen.add(l); unique.push(l); }
+  }
+  if (!unique.includes(state.kbmPoint)) {
+    state.kbmPoint = state.startLabel;
+  }
+  els.kbmPoint.innerHTML = unique.map(l =>
+    `<option value="${escapeAttr(l)}"${l === state.kbmPoint ? ' selected' : ''}>${escapeHtml(l)}</option>`
+  ).join('');
+}
+
+function renderSegmentResults() {
+  if (!state.results) {
+    document.querySelectorAll('[data-result]').forEach(el => el.innerHTML = '');
+    return;
+  }
+  state.results.segResults.forEach((r, i) => {
+    const el = document.querySelector(`[data-result="${i}"]`);
+    if (!el) return;
+    const rows = [];
+    rows.push(`<div class="row"><span class="label">水平距離 HD</span><span class="val">${fmt4(r.hd)} m</span></div>`);
+    if (r.dhR !== null) {
+      rows.push(`<div class="row"><span class="label">正高低差 ΔH_R</span><span class="val">${signed4(r.dhR)} m</span></div>`);
+    }
+    if (r.dhL !== null) {
+      rows.push(`<div class="row"><span class="label">反高低差 ΔH_L</span><span class="val">${signed4(r.dhL)} m</span></div>`);
+    }
+    rows.push(`<div class="row"><span class="label">採用値 ΔH</span><span class="val adopted">${signed4(r.dh)} m</span></div>`);
+    if (r.diffMm !== null) {
+      rows.push(`<div class="row"><span class="label">較差</span><span class="val">${fmt1(r.diffMm)} mm</span></div>`);
+    }
+    el.innerHTML = rows.join('');
+  });
+}
+
+function renderResults() {
+  if (!state.results) {
+    els.resultsCard.classList.add('hidden');
+    return;
+  }
+  els.resultsCard.classList.remove('hidden');
+
+  const { points, totalHd, isClosed, closure, kbmIdx } = state.results;
+
+  // テーブル
+  els.resultsBody.innerHTML = points.map((p, i) => {
+    const isKbm = i === kbmIdx;
+    return `
+      <tr class="${isKbm ? 'kbm-row' : ''}">
+        <td>${escapeHtml(p.label)}${isKbm ? '<span class="kbm-badge">KBM</span>' : ''}</td>
+        <td>${signed4(p.cum)}</td>
+        <td>${fmt4(p.cum)}</td>
+        <td>${fmt4(p.elev)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // サマリ
+  const rows = [];
+  rows.push(`<div class="row"><span class="label">総水平距離</span><span class="val">${fmt4(totalHd)} m</span></div>`);
+  if (isClosed && closure) {
+    rows.push(`<div class="row"><span class="label">閉合差</span><span class="val">${fmt1(closure.closureMm)} mm</span></div>`);
+    rows.push(`<div class="row"><span class="label">許容誤差(3級水準)</span><span class="val">±${fmt1(closure.allowMm)} mm</span></div>`);
+    const ok = closure.ok;
+    rows.push(`<div class="row"><span class="label">判定</span><span class="val ${ok ? 'ok' : 'ng'}">${ok ? '✓ OK' : '✗ 再測'}</span></div>`);
+  }
+  els.summary.innerHTML = rows.join('');
+
+  // dirty フラグ表示
+  if (state.isDirty) {
+    els.dirtyWarn.classList.remove('hidden');
+  } else {
+    els.dirtyWarn.classList.add('hidden');
+  }
+}
+
+function renderAll() {
+  els.startLabel.value = state.startLabel;
+  els.kbmElev.value = state.kbmElevation;
+  renderSegments();
+  renderKbmDropdown();
+  renderSegmentResults();
+  renderResults();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function escapeAttr(s) {
+  return escapeHtml(s);
+}
+
+// === エラー表示 ===
+function showError(msg, target) {
+  els.errorBanner.textContent = '⚠ ' + msg;
+  els.errorBanner.classList.remove('hidden');
+  // 赤枠
+  clearErrorMarks();
+  if (target) {
+    if (target.common === 'kbmElev') {
+      els.kbmElev.classList.add('error');
+      els.kbmElev.focus();
+      els.kbmElev.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (target.segIdx !== undefined) {
+      const segEl = document.querySelector(`.segment[data-seg="${target.segIdx}"]`);
+      const inputEl = document.querySelector(`input[data-seg="${target.segIdx}"][data-field="${target.field}"]`);
+      if (inputEl) inputEl.classList.add('error');
+      if (segEl) segEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (inputEl) setTimeout(() => inputEl.focus(), 300);
+    }
+  }
+}
+function clearError() {
+  els.errorBanner.classList.add('hidden');
+  els.errorBanner.textContent = '';
+  clearErrorMarks();
+}
+function clearErrorMarks() {
+  document.querySelectorAll('input.error').forEach(el => el.classList.remove('error'));
+}
+
+// === 5. イベントハンドラ ===
+function onAddSegment() {
+  if (state.segments.length >= MAX_SEGMENTS) return;
+  const newIdx = state.segments.length;
+  const num = newIdx + 1;
+  state.segments.push({ endLabel: 'T' + num, sd: '', ih: '', th: '', vR: '', vL: '' });
+  state.isDirty = true;
+  if (state.results) renderResults();
+  renderSegments();
+  renderKbmDropdown();
+  renderSegmentResults();
+  // 新区間にスクロール+SDフォーカス
+  setTimeout(() => {
+    const newCard = document.querySelector(`.segment[data-seg="${newIdx}"]`);
+    if (newCard) newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const sdInput = document.getElementById('sd-' + newIdx);
+    if (sdInput) sdInput.focus();
+  }, 100);
+}
+
+function onRemoveSegment(idx) {
+  if (state.segments.length <= 1) return;
+  state.segments.splice(idx, 1);
+  state.isDirty = true;
+  if (state.results) renderResults();
+  // KBM割当てが削除点なら始点に戻す(renderKbmDropdown内で自動)
+  renderSegments();
+  renderKbmDropdown();
+  renderSegmentResults();
+}
+
+function onCalculate() {
+  clearError();
+  const v = validate(state);
+  if (!v.ok) {
+    showError(v.errorMsg, v.errorTarget);
+    return;
+  }
+  try {
+    state.results = computeAll(state);
+    state.isDirty = false;
+    renderSegmentResults();
+    renderResults();
+    setTimeout(() => {
+      els.resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  } catch (e) {
+    showError('計算エラー: ' + e.message);
+  }
+}
+
+function onCopy() {
+  if (!state.results) return;
+  const { points, totalHd, isClosed, closure, kbmIdx } = state.results;
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ts = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+  const lines = [];
+  lines.push(`高低測量計算結果\t${ts}`);
+  lines.push(`点名\t累積高低差(m)\t仮標高(m)\t確定標高(m)`);
+  points.forEach((p, i) => {
+    const isKbm = i === kbmIdx;
+    let row = `${p.label}\t${signed4(p.cum)}\t${fmt4(p.cum)}\t${fmt4(p.elev)}`;
+    if (isKbm) row += '\t[KBM]';
+    lines.push(row);
+  });
+  lines.push('---');
+  lines.push(`総水平距離: ${fmt4(totalHd)} m`);
+  if (isClosed && closure) {
+    lines.push(`閉合差: ${fmt1(closure.closureMm)} mm`);
+    lines.push(`許容誤差: ±${fmt1(closure.allowMm)} mm (3級水準)`);
+    lines.push(`判定: ${closure.ok ? 'OK' : '再測'}`);
+  }
+  const text = lines.join('\n');
+
+  const done = () => {
+    const orig = els.copyBtn.textContent;
+    els.copyBtn.textContent = '✓ コピーしました';
+    setTimeout(() => { els.copyBtn.textContent = orig; }, 2000);
+  };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      done();
+    } catch (e) {
+      alert('コピーに失敗しました。下記を手動でコピーしてください:\n\n' + text);
+    }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(fallback);
+  } else {
+    fallback();
+  }
+}
+
+function onReset() {
+  if (!confirm('入力をすべてクリアしますか?')) return;
+  state.startLabel = 'M1';
+  state.kbmPoint = 'M1';
+  state.kbmElevation = 10.0000;
+  state.segments = [{ endLabel: 'T1', sd: '', ih: '', th: '', vR: '', vL: '' }];
+  state.results = null;
+  state.isDirty = false;
+  clearError();
+  renderAll();
+}
+
+// 入力イベント(再描画なしで state 同期)
+function bindGlobalEvents() {
+  els.startLabel.addEventListener('input', e => {
+    const v = e.target.value.slice(0, 10);
+    state.startLabel = v;
+    clearError();
+    markDirty();
+    // 区間1の始点ラベル表示を更新
+    updateSegmentStartLabels();
+    renderKbmDropdown();
+  });
+  els.startLabel.addEventListener('blur', e => {
+    if (e.target.value.trim() === '') {
+      state.startLabel = 'M1';
+      e.target.value = 'M1';
+      updateSegmentStartLabels();
+      renderKbmDropdown();
+    }
+  });
+
+  els.kbmPoint.addEventListener('change', e => {
+    state.kbmPoint = e.target.value;
+    markDirty();
+  });
+
+  els.kbmElev.addEventListener('input', e => {
+    state.kbmElevation = e.target.value;
+    clearError();
+    markDirty();
+  });
+
+  els.addBtn.addEventListener('click', onAddSegment);
+  els.calcBtn.addEventListener('click', onCalculate);
+  els.copyBtn.addEventListener('click', onCopy);
+  els.resetBtn.addEventListener('click', onReset);
+
+  // 区間内の入力(イベント委譲)
+  els.segments.addEventListener('input', e => {
+    const t = e.target;
+    if (!t.dataset || t.dataset.seg === undefined) return;
+    const idx = parseInt(t.dataset.seg, 10);
+    const field = t.dataset.field;
+    if (field === 'endLabel') {
+      let v = t.value.slice(0, 10);
+      state.segments[idx].endLabel = v;
+      // 次区間の始点ラベル表示更新
+      updateSegmentStartLabels();
+      renderKbmDropdown();
+    } else {
+      state.segments[idx][field] = t.value;
+    }
+    clearError();
+    markDirty();
+  });
+
+  els.segments.addEventListener('blur', e => {
+    const t = e.target;
+    if (t.dataset && t.dataset.field === 'endLabel') {
+      const idx = parseInt(t.dataset.seg, 10);
+      if (t.value.trim() === '') {
+        const fallback = 'T' + (idx + 1);
+        state.segments[idx].endLabel = fallback;
+        t.value = fallback;
+        updateSegmentStartLabels();
+        renderKbmDropdown();
+      }
+    }
+  }, true);
+
+  els.segments.addEventListener('click', e => {
+    const t = e.target;
+    if (t.dataset && t.dataset.action === 'del') {
+      const idx = parseInt(t.dataset.seg, 10);
+      onRemoveSegment(idx);
+    }
+  });
+
+  // Enter キーで次入力へ
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    if (e.target.tagName !== 'INPUT') return;
+    if (e.target.type !== 'text' && e.target.type !== '') return;
+    e.preventDefault();
+    const inputs = Array.from(document.querySelectorAll('input[type="text"]'));
+    const idx = inputs.indexOf(e.target);
+    if (idx < 0) return;
+    if (idx + 1 < inputs.length) {
+      inputs[idx + 1].focus();
+    } else {
+      onCalculate();
+    }
+  });
+}
+
+function updateSegmentStartLabels() {
+  state.segments.forEach((_, i) => {
+    const segEl = document.querySelector(`.segment[data-seg="${i}"] .segment-title .from`);
+    if (segEl) segEl.textContent = getStartLabelFor(i);
+  });
+}
+
+function markDirty() {
+  if (state.results) {
+    state.isDirty = true;
+    els.dirtyWarn.classList.remove('hidden');
+  }
+}
+
+// === 6. テスト ===
+function approxEq(a, b, eps) {
+  eps = eps || 1e-4;
+  return Math.abs(a - b) < eps;
+}
+
+function runTests() {
+  const results = [];
+  const t = (name, fn) => {
+    try {
+      fn();
+      results.push({ name, pass: true });
+    } catch (e) {
+      results.push({ name, pass: false, msg: e.message });
+    }
+  };
+  const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'assertion failed'); };
+  const assertThrows = (fn, expectedMsg) => {
+    let threw = false, gotMsg = '';
+    try { fn(); } catch (e) { threw = true; gotMsg = e.message; }
+    if (!threw) throw new Error('expected throw');
+    if (expectedMsg && !gotMsg.includes(expectedMsg)) throw new Error('throw msg mismatch: got "' + gotMsg + '"');
+  };
+
+  // TC1: dms変換
+  t('TC1-1 dmsToDecimal(90.3045)=90.5125', () => assert(approxEq(dmsToDecimal('90.3045'), 90.5125)));
+  t('TC1-2 dmsToDecimal(89.3045)', () => assert(approxEq(dmsToDecimal('89.3045'), 89 + 30/60 + 45/3600)));
+  t('TC1-3 dmsToDecimal(270.2915)', () => assert(approxEq(dmsToDecimal('270.2915'), 270 + 29/60 + 15/3600)));
+  t('TC1-4 dmsToDecimal(0)=0', () => assert(dmsToDecimal('0') === 0));
+  t('TC1-5 dmsToDecimal(180)=180', () => assert(dmsToDecimal('180') === 180));
+  t('TC1-6 90.6045 throws (min>=60)', () => assertThrows(() => dmsToDecimal('90.6045'), '分は59以下'));
+  t('TC1-7 90.3060 throws (sec>=60)', () => assertThrows(() => dmsToDecimal('90.3060'), '秒は59以下'));
+  t('TC1-8 -10 throws (negative)', () => assertThrows(() => dmsToDecimal('-10'), '0以上'));
+
+  // TC2: 基本計算
+  t('TC2 1区間 正反平均', () => {
+    const r = computeSegment({ sd: '50.0000', ih: '1.5000', th: '1.5000', vR: '89.3045', vL: '270.2915' });
+    assert(approxEq(r.dh, 0.4254, 1e-4), 'dh=' + r.dh);
+    assert(approxEq(r.diffMm, 0.0, 1e-6), 'diffMm=' + r.diffMm);
+    assert(approxEq(r.hd, 49.9982, 1e-3), 'hd=' + r.hd);
+  });
+
+  // TC3: 2区間 + KBM
+  t('TC3 2区間+KBM=T1', () => {
+    const s = {
+      startLabel: 'M1',
+      kbmPoint: 'T1',
+      kbmElevation: 10.0000,
+      segments: [
+        { endLabel: 'T1', sd: '50', ih: '1.5', th: '1.5', vR: '89.3045', vL: '270.2915' },
+        { endLabel: 'T2', sd: '45', ih: '1.5', th: '1.5', vR: '88.0000', vL: '272.0000' }
+      ]
+    };
+    const r = computeAll(s);
+    assert(r.points.length === 3);
+    assert(r.points[0].label === 'M1' && approxEq(r.points[0].cum, 0));
+    assert(approxEq(r.points[1].cum, 0.4254, 1e-3));
+    assert(approxEq(r.points[1].elev, 10.0000, 1e-6), 'T1 elev=' + r.points[1].elev);
+    assert(approxEq(r.points[0].elev, 10.0 + (0 - 0.4254), 1e-3), 'M1 elev=' + r.points[0].elev);
+    // T2 累積 ≒ 0.4254 + cos(88°)*45 = 0.4254 + 1.5705 ≒ 1.9959
+    assert(approxEq(r.points[2].cum, 0.4254 + Math.cos(88 * Math.PI / 180) * 45, 1e-4));
+  });
+
+  // TC4: 閉合トラバース
+  t('TC4 閉合判定', () => {
+    // 始点=最終終点ラベルが一致するかで判定。値は computeSegment 経由なので適当な実値で作る
+    const s = {
+      startLabel: 'M1',
+      kbmPoint: 'M1',
+      kbmElevation: 10.0,
+      segments: [
+        { endLabel: 'T1', sd: '100', ih: '1', th: '1', vR: '90', vL: '' },
+        { endLabel: 'T2', sd: '100', ih: '1', th: '1', vR: '90', vL: '' },
+        { endLabel: 'M1', sd: '100', ih: '1', th: '1', vR: '90', vL: '' }
+      ]
+    };
+    const r = computeAll(s);
+    assert(r.isClosed === true, 'isClosed');
+    assert(r.closure !== null);
+    // 全部 V=90° なら ΔH=0 で closureMm=0, ok=true
+    assert(r.closure.closureMm < 0.01);
+    assert(r.closure.ok === true);
+    // 許容誤差 = 10*sqrt(0.3) ≒ 5.477
+    assert(approxEq(r.closure.allowMm, 10 * Math.sqrt(0.3), 1e-6));
+  });
+
+  // TC5: 反のみ
+  t('TC5 反のみ入力', () => {
+    const r = computeSegment({ sd: '50', ih: '1.5', th: '1.5', vR: '', vL: '270.2915' });
+    assert(r.dhR === null, 'dhR null');
+    assert(r.diffMm === null, '較差非表示');
+    // 採用値 = 反高低差 = cos(89.5125°) * 50
+    const expected = Math.cos((360 - (270 + 29/60 + 15/3600)) * Math.PI / 180) * 50;
+    assert(approxEq(r.dh, expected, 1e-6));
+  });
+
+  // TC6: バリデーション
+  t('TC6-1 V_R 90.6045 → エラー', () => {
+    const s = { ...state, segments: [{ endLabel: 'T1', sd: '50', ih: '1.5', th: '1.5', vR: '90.6045', vL: '' }], kbmElevation: 10 };
+    const v = validate(s);
+    assert(v.ok === false);
+    assert(v.errorMsg.includes('分は59以下'), v.errorMsg);
+  });
+  t('TC6-2 V両方空 → エラー', () => {
+    const s = { ...state, segments: [{ endLabel: 'T1', sd: '50', ih: '1.5', th: '1.5', vR: '', vL: '' }], kbmElevation: 10 };
+    const v = validate(s);
+    assert(v.ok === false);
+    assert(v.errorMsg.includes('鉛直角'), v.errorMsg);
+  });
+  t('TC6-3 SD=0 → エラー', () => {
+    const s = { ...state, segments: [{ endLabel: 'T1', sd: '0', ih: '1.5', th: '1.5', vR: '90', vL: '' }], kbmElevation: 10 };
+    const v = validate(s);
+    assert(v.ok === false);
+    assert(v.errorMsg.includes('0より大きい'), v.errorMsg);
+  });
+
+  // 符号表示
+  t('signed4 +0.0000', () => assert(signed4(0) === '+0.0000'));
+  t('signed4 -0.1234', () => assert(signed4(-0.1234) === '-0.1234'));
+  t('signed4 +0.4254', () => assert(signed4(0.4254) === '+0.4254'));
+  t('signed4 -0 → +0.0000', () => assert(signed4(-0) === '+0.0000'));
+  t('signed4 微小負 → +0.0000', () => assert(signed4(-0.00001) === '+0.0000'));
+
+  // 表示
+  const pass = results.filter(r => r.pass).length;
+  const fail = results.filter(r => !r.pass).length;
+  let html = `<div class="test-results"><h3>テスト結果: ${pass} pass / ${fail} fail</h3>`;
+  for (const r of results) {
+    if (r.pass) {
+      html += `<div class="case pass">✓ ${escapeHtml(r.name)}</div>`;
+    } else {
+      html += `<div class="case fail">✗ ${escapeHtml(r.name)} — ${escapeHtml(r.msg)}</div>`;
+    }
+  }
+  html += `</div>`;
+  els.testResults.innerHTML = html;
+  console.log(`[Test] ${pass} pass / ${fail} fail`, results);
+}
+
+// === 7. 初期化 ===
+function init() {
+  renderAll();
+  bindGlobalEvents();
+  if (location.hash === '#test') {
+    runTests();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
