@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ja">
+<!--
+  SIMA Converter v0.1
+
+  Purpose:
+    Gemini等で文字起こし済みの「点名 X Y」を貼り付け、
+    点名変換・検証・SIMA生成・.SIM保存までローカルで行う。
+
+  Privacy:
+    外部通信なし / 外部依存なし / 入力データはブラウザ内だけで処理。
+
+  Reference SIM encoding observed from C.SIM:
+    UTF-8 (no BOM), CRLF, no final newline.
+
+  Test mode:
+    URL末尾に #test を付けると self-test を表示する。
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="format-detection" content="telephone=no">
+<title>SIMA Converter</title>
+<style>
+:root {
+  --bg: #fff8f1;
+  --surface: #ffffff;
+  --surface-2: #fdf1e3;
+  --border: #e8d4bc;
+  --border-strong: #d4a574;
+  --text: #3a2418;
+  --text-dim: #7d6758;
+  --accent: #e87722;
+  --accent-hover: #d96820;
+  --accent-soft: #fbe5cf;
+  --success: #4f7f3b;
+  --success-soft: #eaf4e5;
+  --warn: #a66c00;
+  --warn-soft: #fff4d5;
+  --danger: #b83b32;
+  --danger-soft: #fde9e7;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic Medium", "Noto Sans JP", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+.app {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 18px 14px 40px;
+}
+header.card {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 10px rgba(86, 47, 18, 0.035);
+}
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+h1 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mark { color: var(--accent); }
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.privacy {
+  font-size: 12px;
+  color: var(--success);
+  background: var(--success-soft);
+  border: 1px solid #cfe4c7;
+  border-radius: 999px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: .02em;
+}
+.section-note {
+  margin: -5px 0 12px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1.12fr .88fr;
+  gap: 14px;
+}
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+textarea, input[type="text"] {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: #fffdfa;
+  color: var(--text);
+  padding: 10px 11px;
+  outline: none;
+}
+textarea:focus, input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(232,119,34,.12);
+}
+#rawInput {
+  min-height: 255px;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  tab-size: 4;
+}
+#replaceRules {
+  min-height: 92px;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.rule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px 12px;
+}
+.field-help {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.btn {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-weight: 650;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.btn.primary:hover { background: var(--accent-hover); }
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.pill {
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+}
+.pill.ok { color: var(--success); background: var(--success-soft); border-color: #cfe4c7; }
+.pill.error { color: var(--danger); background: var(--danger-soft); border-color: #f1c6c2; }
+.pill.warn { color: var(--warn); background: var(--warn-soft); border-color: #ead398; }
+.error-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.error-list li {
+  margin: 6px 0 0;
+  border-left: 4px solid var(--danger);
+  background: var(--danger-soft);
+  border-radius: 5px;
+  padding: 7px 9px;
+  font-size: 12px;
+}
+.table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+  font-size: 12.5px;
+}
+th, td {
+  padding: 8px 9px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: .03em;
+}
+tr:last-child td { border-bottom: 0; }
+.mono { font-family: var(--mono); }
+.status-ok { color: var(--success); font-weight: 700; }
+.status-error { color: var(--danger); font-weight: 700; }
+.arrow { color: var(--text-dim); padding: 0 3px; }
+.sima-preview {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 12px;
+  background: #241b16;
+  color: #f8eee5;
+  border: 0;
+  border-radius: 8px;
+  padding: 12px;
+  line-height: 1.55;
+}
+.download-grid {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: 12px;
+}
+.empty {
+  padding: 25px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+#testPanel { display: none; }
+#testPanel.show { display: block; }
+.test-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 7px 0;
+  font-size: 12px;
+}
+.test-row:last-child { border-bottom: 0; }
+.footer-note {
+  color: var(--text-dim);
+  text-align: center;
+  font-size: 11px;
+  margin-top: 18px;
+}
+@media (max-width: 820px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .rule-grid { grid-template-columns: 1fr; }
+  .download-grid { grid-template-columns: 1fr; }
+  .download-grid .btn { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="card">
+    <div class="header-row">
+      <div>
+        <h1><span class="mark">◆</span> SIMA Converter</h1>
+        <p class="subtitle">文字起こし済み座標 → 点名変換 → 検証 → .SIM</p>
+      </div>
+      <div class="privacy">外部通信なし / ブラウザ内処理</div>
+    </div>
+  </header>
+
+  <div class="grid-2">
+    <section class="card">
+      <h2>1. Geminiの文字起こしを貼り付け</h2>
+      <p class="section-note">1行につき「点名 X Y」。TAB / 空白 / カンマ区切りに対応。MarkdownのコードフェンスもそのままでOK。</p>
+      <label for="rawInput">座標テキスト</label>
+      <textarea id="rawInput" spellcheck="false" placeholder="3B6    427.609    375.654&#10;3B7    424.043    383.971&#10;P.1    436.847    354.106"></textarea>
+      <div class="button-row">
+        <button class="btn" id="sampleBtn" type="button">サンプルを入れる</button>
+        <button class="btn" id="clearBtn" type="button">クリア</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. 今回の点名変換</h2>
+      <p class="section-note">変換順：先頭削除 → 文字列削除 → 先頭置換 → 接頭辞追加。結果は下の表で必ず確認。</p>
+      <div class="rule-grid">
+        <div>
+          <label for="removeLeading">先頭から削除</label>
+          <input id="removeLeading" type="text" placeholder="例: 3">
+          <div class="field-help">入力文字列と完全一致する場合だけ先頭から削除。</div>
+        </div>
+        <div>
+          <label for="removeGlobal">全体から削除</label>
+          <input id="removeGlobal" type="text" placeholder="例: .">
+          <div class="field-help">指定した文字列を点名全体から削除。</div>
+        </div>
+        <div>
+          <label for="prefix">最後に接頭辞を追加</label>
+          <input id="prefix" type="text" placeholder="例: C">
+          <div class="field-help">例: B6 → CB6。</div>
+        </div>
+        <div>
+          <label for="fileName">保存ファイル名</label>
+          <input id="fileName" type="text" value="sima_data" placeholder="例: C現場">
+          <div class="field-help">.SIM は自動付与。既に入力済みなら重ねて付けない。</div>
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label for="replaceRules">先頭置換（任意）</label>
+        <textarea id="replaceRules" spellcheck="false" placeholder="P -> BP&#10;S -> BS"></textarea>
+        <div class="field-help">1行1ルール。「P -&gt; BP」「S=BS」「K→CK」に対応。上から最初に一致した1件だけ適用。</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>3. 検証結果</h2>
+    <div id="summary" class="summary"></div>
+    <ul id="errorList" class="error-list"></ul>
+  </section>
+
+  <section class="card">
+    <h2>4. 点名変換プレビュー</h2>
+    <div class="table-wrap" id="tableWrap">
+      <div class="empty">座標テキストを貼り付けるとここに表示されます。</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>5. SIMA生成</h2>
+    <p class="section-note">UTF-8（BOMなし）/ CRLF / 最終改行なし。参照 C.SIM の実ファイル形式に合わせています。</p>
+    <textarea id="simaPreview" class="sima-preview" readonly spellcheck="false" placeholder="エラーが0件になるとSIMAを生成します。"></textarea>
+    <div class="download-grid">
+      <div id="fileMessage" class="field-help"></div>
+      <div class="button-row" style="margin:0; justify-content:flex-end">
+        <button class="btn" id="copyBtn" type="button" disabled>SIMAをコピー</button>
+        <button class="btn primary" id="downloadBtn" type="button" disabled>.SIMを保存</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="testPanel" class="card">
+    <h2>Self Test</h2>
+    <div id="testResults"></div>
+  </section>
+
+  <div class="footer-note">SIMA Converter v0.1 — 画像認識はGemini側、SIMA化はこのHTMLで決定論的に処理します。</div>
+</div>
+
+<script>
+// CORE_START
+const SimaCore = (() => {
+  const COORD_RE = /^[+-]?\d+(?:\.\d+)?$/;
+  const HEADER_FORMS = new Set([
+    '点名 X Y',
+    '点名 X座標 Y座標',
+    '点名,X,Y',
+    '点名,X座標,Y座標'
+  ]);
+
+  function normalizeHeaderLine(line) {
+    const t = line.trim();
+    if (t.includes(',')) return t.split(',').map(v => v.trim()).join(',');
+    return t.split(/\s+/).join(' ');
+  }
+
+  function isKnownHeader(line) {
+    return HEADER_FORMS.has(normalizeHeaderLine(line));
+  }
+
+  function splitDataLine(line) {
+    const trimmed = line.trim();
+    if (trimmed.includes(',')) return trimmed.split(',').map(v => v.trim());
+    return trimmed.split(/\s+/);
+  }
+
+  function validCoordinate(value) {
+    return typeof value === 'string' && COORD_RE.test(value);
+  }
+
+  function parseInput(text) {
+    const accepted = [];
+    const errors = [];
+    const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+
+    lines.forEach((rawLine, index) => {
+      const lineNo = index + 1;
+      const line = rawLine.trim();
+      if (!line) return;
+      if (/^```/.test(line)) return;
+      if (isKnownHeader(line)) return;
+
+      const cols = splitDataLine(line);
+      if (cols.length !== 3) {
+        errors.push({ lineNo, code: 'PARSE_COLUMNS', message: `行${lineNo}: 3列（点名 X Y）として解析できません`, raw: rawLine });
+        return;
+      }
+      const [point, x, y] = cols;
+      const rowErrors = [];
+      if (!point) rowErrors.push('点名が空です');
+      if (!x) rowErrors.push('X座標が空です');
+      else if (!validCoordinate(x)) rowErrors.push(`X座標「${x}」が数値形式ではありません`);
+      if (!y) rowErrors.push('Y座標が空です');
+      else if (!validCoordinate(y)) rowErrors.push(`Y座標「${y}」が数値形式ではありません`);
+
+      if (rowErrors.length) {
+        rowErrors.forEach(message => errors.push({ lineNo, code: 'ROW_INVALID', message: `行${lineNo}: ${message}`, raw: rawLine }));
+        return;
+      }
+      accepted.push({ sourceLine: lineNo, rawPoint: point, x, y });
+    });
+
+    return { rows: accepted, errors };
+  }
+
+  function parseReplacementRules(text) {
+    const rules = [];
+    const errors = [];
+    const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+
+    lines.forEach((rawLine, index) => {
+      const line = rawLine.trim();
+      if (!line) return;
+      let parts;
+      if (line.includes('->')) parts = line.split('->');
+      else if (line.includes('→')) parts = line.split('→');
+      else if (line.includes('=')) parts = line.split('=');
+      else {
+        errors.push(`先頭置換 ${index + 1}行目: 「P -> BP」の形式で入力してください`);
+        return;
+      }
+      if (parts.length !== 2) {
+        errors.push(`先頭置換 ${index + 1}行目: 区切り記号は1つだけにしてください`);
+        return;
+      }
+      const from = parts[0].trim();
+      const to = parts[1].trim();
+      if (!from) {
+        errors.push(`先頭置換 ${index + 1}行目: 置換元が空です`);
+        return;
+      }
+      if (/[\r\n,]/.test(from) || /[\r\n,]/.test(to)) {
+        errors.push(`先頭置換 ${index + 1}行目: カンマ・改行は使用できません`);
+        return;
+      }
+      rules.push({ from, to });
+    });
+    return { rules, errors };
+  }
+
+  function validateRuleLiteral(label, value) {
+    if (/[\r\n,]/.test(String(value ?? ''))) return `${label}にカンマ・改行は使用できません`;
+    return null;
+  }
+
+  function transformPoint(rawPoint, cfg) {
+    let point = String(rawPoint ?? '').trim();
+    const steps = [];
+    const leading = String(cfg.removeLeading ?? '');
+    const globalRemove = String(cfg.removeGlobal ?? '');
+    const prefix = String(cfg.prefix ?? '');
+    const replaceRules = Array.isArray(cfg.replaceRules) ? cfg.replaceRules : [];
+
+    if (leading && point.startsWith(leading)) {
+      point = point.slice(leading.length);
+      steps.push(`先頭「${leading}」削除`);
+    }
+    if (globalRemove && point.includes(globalRemove)) {
+      point = point.split(globalRemove).join('');
+      steps.push(`「${globalRemove}」削除`);
+    }
+    for (const rule of replaceRules) {
+      if (point.startsWith(rule.from)) {
+        point = rule.to + point.slice(rule.from.length);
+        steps.push(`先頭 ${rule.from}→${rule.to}`);
+        break;
+      }
+    }
+    if (prefix) {
+      point = prefix + point;
+      steps.push(`接頭辞「${prefix}」`);
+    }
+    return { finalPoint: point, steps };
+  }
+
+  function validateAndTransform(parsedRows, cfg) {
+    const rows = [];
+    const errors = [];
+    const ruleErrors = [];
+
+    [
+      ['先頭削除', cfg.removeLeading],
+      ['全体削除', cfg.removeGlobal],
+      ['接頭辞', cfg.prefix]
+    ].forEach(([label, value]) => {
+      const err = validateRuleLiteral(label, value);
+      if (err) ruleErrors.push(err);
+    });
+    if (Array.isArray(cfg.ruleErrors)) ruleErrors.push(...cfg.ruleErrors);
+    ruleErrors.forEach(message => errors.push({ code: 'RULE_INVALID', message }));
+
+    parsedRows.forEach((row, index) => {
+      const transformed = transformPoint(row.rawPoint, cfg);
+      const finalPoint = transformed.finalPoint;
+      const rowErrors = [];
+      if (!finalPoint) rowErrors.push('変換後の点名が空です');
+      if (/[\r\n,]/.test(finalPoint)) rowErrors.push(`変換後点名「${finalPoint}」にカンマ・改行を使用できません`);
+      const out = { ...row, index: index + 1, finalPoint, steps: transformed.steps, errors: rowErrors };
+      rows.push(out);
+      rowErrors.forEach(message => errors.push({ code: 'POINT_INVALID', lineNo: row.sourceLine, message: `行${row.sourceLine}: ${message}` }));
+    });
+
+    const seen = new Map();
+    rows.forEach(row => {
+      if (!row.finalPoint) return;
+      if (!seen.has(row.finalPoint)) seen.set(row.finalPoint, []);
+      seen.get(row.finalPoint).push(row);
+    });
+    for (const [name, list] of seen) {
+      if (list.length > 1) {
+        const lineText = list.map(r => r.sourceLine).join(', ');
+        errors.push({ code: 'DUPLICATE_POINT', message: `SIMA点名「${name}」が重複しています（入力行: ${lineText}）` });
+        list.forEach(r => r.errors.push('変換後点名が重複'));
+      }
+    }
+    return { rows, errors };
+  }
+
+  function generateSima(rows) {
+    const lines = [
+      'G00,01,画像抽出データ,',
+      'Z00,座標データ,',
+      'A00,'
+    ];
+    rows.forEach((row, index) => {
+      lines.push(`A01,${index + 1},${row.finalPoint},${row.x},${row.y},,`);
+    });
+    lines.push('A99,');
+    return lines.join('\r\n');
+  }
+
+  function validateFileName(input) {
+    let name = String(input ?? '').trim();
+    if (!name) return { ok: false, message: '保存ファイル名を入力してください' };
+    if (/[<>:"/\\|?*\x00-\x1F]/.test(name)) return { ok: false, message: 'Windowsで使用できない文字 < > : " / \\ | ? * はファイル名に使えません' };
+    if (/[. ]$/.test(name)) return { ok: false, message: 'ファイル名の末尾にピリオドまたは空白は使用できません' };
+    const withExt = /\.sim$/i.test(name) ? name : `${name}.SIM`;
+    const stem = withExt.replace(/\.sim$/i, '');
+    if (/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(stem)) return { ok: false, message: 'Windows予約名はファイル名に使用できません' };
+    return { ok: true, fileName: withExt };
+  }
+
+  function processAll(rawText, cfg) {
+    const parsed = parseInput(rawText);
+    const transformed = validateAndTransform(parsed.rows, cfg);
+    const errors = [...parsed.errors, ...transformed.errors];
+    const sima = errors.length === 0 && transformed.rows.length > 0 ? generateSima(transformed.rows) : '';
+    return { rows: transformed.rows, errors, sima };
+  }
+
+  return {
+    validCoordinate,
+    parseInput,
+    parseReplacementRules,
+    transformPoint,
+    validateAndTransform,
+    generateSima,
+    validateFileName,
+    processAll
+  };
+})();
+if (typeof window !== 'undefined') window.SimaCore = SimaCore;
+// CORE_END
+
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    raw: $('rawInput'),
+    removeLeading: $('removeLeading'),
+    removeGlobal: $('removeGlobal'),
+    prefix: $('prefix'),
+    replaceRules: $('replaceRules'),
+    fileName: $('fileName'),
+    summary: $('summary'),
+    errorList: $('errorList'),
+    tableWrap: $('tableWrap'),
+    simaPreview: $('simaPreview'),
+    downloadBtn: $('downloadBtn'),
+    copyBtn: $('copyBtn'),
+    fileMessage: $('fileMessage'),
+    sampleBtn: $('sampleBtn'),
+    clearBtn: $('clearBtn'),
+    testPanel: $('testPanel'),
+    testResults: $('testResults')
+  };
+  let current = { rows: [], errors: [], sima: '', file: { ok: false } };
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+  }
+
+  function buildConfig() {
+    const parsedRules = SimaCore.parseReplacementRules(els.replaceRules.value);
+    return {
+      removeLeading: els.removeLeading.value,
+      removeGlobal: els.removeGlobal.value,
+      prefix: els.prefix.value,
+      replaceRules: parsedRules.rules,
+      ruleErrors: parsedRules.errors
+    };
+  }
+
+  function renderSummary(rows, errors) {
+    const parts = [];
+    parts.push(`<span class="pill ${rows.length ? 'ok' : 'warn'}">${rows.length}点を認識</span>`);
+    const coordErrors = errors.filter(e => e.code === 'ROW_INVALID' || e.code === 'PARSE_COLUMNS').length;
+    parts.push(`<span class="pill ${coordErrors ? 'error' : 'ok'}">${coordErrors ? '入力エラーあり' : '座標形式正常'}</span>`);
+    const duplicates = errors.filter(e => e.code === 'DUPLICATE_POINT').length;
+    parts.push(`<span class="pill ${duplicates ? 'error' : 'ok'}">${duplicates ? '点名重複あり' : 'SIMA点名重複なし'}</span>`);
+    parts.push(`<span class="pill ${errors.length ? 'error' : 'ok'}">ERROR ${errors.length}</span>`);
+    els.summary.innerHTML = parts.join('');
+
+    els.errorList.innerHTML = errors.map(e => `<li>${escapeHtml(e.message)}${e.raw ? `<div class="mono" style="margin-top:3px">${escapeHtml(e.raw)}</div>` : ''}</li>`).join('');
+  }
+
+  function renderTable(rows) {
+    if (!rows.length) {
+      els.tableWrap.innerHTML = '<div class="empty">座標テキストを貼り付けるとここに表示されます。</div>';
+      return;
+    }
+    const body = rows.map(row => {
+      const ok = row.errors.length === 0;
+      const stepText = row.steps.length ? row.steps.join(' / ') : '変更なし';
+      return `<tr>
+        <td class="mono">${row.index}</td>
+        <td class="mono">${escapeHtml(row.rawPoint)}</td>
+        <td><span class="mono">${escapeHtml(row.rawPoint)}</span><span class="arrow">→</span><strong class="mono">${escapeHtml(row.finalPoint)}</strong></td>
+        <td>${escapeHtml(stepText)}</td>
+        <td class="mono">${escapeHtml(row.x)}</td>
+        <td class="mono">${escapeHtml(row.y)}</td>
+        <td class="${ok ? 'status-ok' : 'status-error'}">${ok ? 'OK' : 'ERROR'}</td>
+      </tr>`;
+    }).join('');
+    els.tableWrap.innerHTML = `<table>
+      <thead><tr><th>#</th><th>元点名</th><th>SIMA点名</th><th>処理</th><th>X</th><th>Y</th><th>状態</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+  }
+
+  function updateAll() {
+    const cfg = buildConfig();
+    const result = SimaCore.processAll(els.raw.value, cfg);
+    const file = SimaCore.validateFileName(els.fileName.value);
+    current = { ...result, file };
+    renderSummary(result.rows, result.errors);
+    renderTable(result.rows);
+    els.simaPreview.value = result.sima;
+
+    const ready = result.errors.length === 0 && result.rows.length > 0 && file.ok;
+    els.downloadBtn.disabled = !ready;
+    els.copyBtn.disabled = !ready;
+    if (!file.ok) els.fileMessage.textContent = file.message;
+    else if (result.errors.length) els.fileMessage.textContent = '入力エラーを解消すると保存できます。';
+    else if (!result.rows.length) els.fileMessage.textContent = '座標データを貼り付けてください。';
+    else els.fileMessage.textContent = `${file.fileName} として保存できます。`;
+  }
+
+  function downloadSima() {
+    if (!current.sima || !current.file.ok || current.errors.length) return;
+    const blob = new Blob([current.sima], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = current.file.fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  async function copySima() {
+    if (!current.sima || current.errors.length) return;
+    try {
+      await navigator.clipboard.writeText(current.sima);
+      const old = els.copyBtn.textContent;
+      els.copyBtn.textContent = 'コピーしました';
+      setTimeout(() => els.copyBtn.textContent = old, 1200);
+    } catch {
+      els.simaPreview.focus();
+      els.simaPreview.select();
+      document.execCommand('copy');
+    }
+  }
+
+  function loadSample() {
+    els.raw.value = '3B6    427.609    375.654\n3B7    424.043    383.971\nP.1    436.847    354.106\nS.2    435.126    360.225';
+    els.removeLeading.value = '3';
+    els.removeGlobal.value = '.';
+    els.prefix.value = 'C';
+    els.replaceRules.value = '';
+    els.fileName.value = 'C現場';
+    updateAll();
+  }
+
+  function clearAll() {
+    els.raw.value = '';
+    els.removeLeading.value = '';
+    els.removeGlobal.value = '';
+    els.prefix.value = '';
+    els.replaceRules.value = '';
+    updateAll();
+    els.raw.focus();
+  }
+
+  function runSelfTests() {
+    const tests = [];
+    const eq = (name, actual, expected) => tests.push({ name, pass: JSON.stringify(actual) === JSON.stringify(expected), actual, expected });
+    const ok = (name, condition, detail='') => tests.push({ name, pass: !!condition, actual: detail, expected: true });
+
+    let r = SimaCore.processAll('B6 100.001 200.002\nB7 100.003 200.004', { prefix:'C', removeLeading:'', removeGlobal:'', replaceRules:[], ruleErrors:[] });
+    eq('01 prefix only', r.rows.map(x => x.finalPoint), ['CB6','CB7']);
+
+    r = SimaCore.processAll('3B6 100.001 200.002\n3B7 100.003 200.004', { prefix:'C', removeLeading:'3', removeGlobal:'', replaceRules:[], ruleErrors:[] });
+    eq('02 leading remove + prefix', r.rows.map(x => x.finalPoint), ['CB6','CB7']);
+
+    r = SimaCore.processAll('P.1 100.001 200.002\nS.2 100.003 200.004', { prefix:'C', removeLeading:'', removeGlobal:'.', replaceRules:[], ruleErrors:[] });
+    eq('03 global remove + prefix', r.rows.map(x => x.finalPoint), ['CP1','CS2']);
+
+    r = SimaCore.processAll('3P.1 100.001 200.002', { prefix:'C', removeLeading:'3', removeGlobal:'.', replaceRules:[], ruleErrors:[] });
+    eq('04 combined transform', r.rows.map(x => x.finalPoint), ['CP1']);
+
+    r = SimaCore.processAll('P1 123.450 987.000', { prefix:'', removeLeading:'', removeGlobal:'', replaceRules:[], ruleErrors:[] });
+    ok('05 decimal preservation', r.sima.includes('P1,123.450,987.000,,'), r.sima);
+
+    r = SimaCore.processAll('P1 123.O50 987.000', { prefix:'', removeLeading:'', removeGlobal:'', replaceRules:[], ruleErrors:[] });
+    ok('06 invalid coordinate fails closed', r.errors.length > 0 && r.sima === '', r.errors.map(e => e.message).join(' | '));
+
+    r = SimaCore.processAll('3B6 100.001 200.002\nB6 100.003 200.004', { prefix:'C', removeLeading:'3', removeGlobal:'', replaceRules:[], ruleErrors:[] });
+    ok('07 duplicate after transform', r.errors.some(e => e.code === 'DUPLICATE_POINT') && r.sima === '', r.errors.map(e => e.message).join(' | '));
+
+    const p1 = SimaCore.parseInput('P1\t100.001\t200.002');
+    const p2 = SimaCore.parseInput('P1    100.001    200.002');
+    const p3 = SimaCore.parseInput('P1,100.001,200.002');
+    eq('08 delimiters', [p1.rows.length,p2.rows.length,p3.rows.length], [1,1,1]);
+
+    const pf = SimaCore.parseInput('```text\nP1 100.001 200.002\n```');
+    eq('09 markdown fence', [pf.rows.length,pf.errors.length], [1,0]);
+
+    r = SimaCore.processAll('P1 100.001 200.002\nP2 100.003 200.004', { prefix:'', removeLeading:'', removeGlobal:'', replaceRules:[], ruleErrors:[] });
+    const exact = 'G00,01,画像抽出データ,\r\nZ00,座標データ,\r\nA00,\r\nA01,1,P1,100.001,200.002,,\r\nA01,2,P2,100.003,200.004,,\r\nA99,';
+    eq('10 exact SIMA structure', r.sima, exact);
+
+    const ph = SimaCore.parseInput('点名 X座標 Y座標\nP1 100.001 200.002');
+    eq('11 known header ignored', [ph.rows.length, ph.errors.length], [1,0]);
+
+    const pu = SimaCore.parseInput('これは説明文です\nP1 100.001 200.002');
+    ok('12 unknown line fails closed', pu.errors.length === 1, pu.errors.map(e => e.message).join(' | '));
+
+    const rr = SimaCore.parseReplacementRules('P -> BP\nS=BS');
+    r = SimaCore.processAll('P.1 100.001 200.002\nS.2 100.003 200.004', { prefix:'', removeLeading:'', removeGlobal:'.', replaceRules:rr.rules, ruleErrors:rr.errors });
+    eq('13 prefix replacement', r.rows.map(x => x.finalPoint), ['BP1','BS2']);
+
+    const allPass = tests.every(t => t.pass);
+    els.testPanel.classList.add('show');
+    els.testResults.innerHTML = tests.map(t => `<div class="test-row"><span>${escapeHtml(t.name)}</span><strong class="${t.pass ? 'status-ok' : 'status-error'}">${t.pass ? 'PASS' : 'FAIL'}</strong></div>`).join('') +
+      `<div class="test-row"><span>RESULT</span><strong class="${allPass ? 'status-ok' : 'status-error'}">${allPass ? 'ALL PASS' : 'FAIL'}</strong></div>`;
+    console.log('SIMA Converter self-test', { allPass, tests });
+  }
+
+  [els.raw, els.removeLeading, els.removeGlobal, els.prefix, els.replaceRules, els.fileName].forEach(el => el.addEventListener('input', updateAll));
+  els.sampleBtn.addEventListener('click', loadSample);
+  els.clearBtn.addEventListener('click', clearAll);
+  els.downloadBtn.addEventListener('click', downloadSima);
+  els.copyBtn.addEventListener('click', copySima);
+
+  updateAll();
+  if (location.hash === '#test') runSelfTests();
+})();
+</script>
+</body>
+</html>
