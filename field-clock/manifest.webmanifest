@@ -1,0 +1,12 @@
+{
+  "name": "Field Clock",
+  "short_name": "Field Clock",
+  "description": "測量現場向けのiPhoneシステム時刻表示時計",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ja"
+}
