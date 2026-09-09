@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#ffffff" id="theme-color">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Field Clock">
+  <meta name="format-detection" content="telephone=no">
+  <title>Field Clock</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #050505;
+      --muted: #2a2a2a;
+      --button-bg: rgba(255,255,255,.92);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    body {
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    body.dark {
+      --bg: #000000;
+      --fg: #fff200;
+      --muted: #fff200;
+      --button-bg: rgba(0,0,0,.92);
+    }
+
+    main {
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding:
+        calc(env(safe-area-inset-top) + 18px)
+        12px
+        calc(env(safe-area-inset-bottom) + 72px);
+      text-align: center;
+    }
+
+    #date {
+      margin-bottom: clamp(18px, 4vh, 42px);
+      font-size: clamp(20px, 5vw, 52px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: .01em;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    #time {
+      max-width: 100%;
+      font-size: clamp(52px, 18vw, 210px);
+      font-weight: 900;
+      line-height: .88;
+      letter-spacing: -.065em;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    #centi {
+      margin-top: clamp(14px, 2.5vh, 28px);
+      font-size: clamp(20px, 5vw, 44px);
+      font-weight: 800;
+      line-height: 1;
+      opacity: .72;
+      font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    #status {
+      position: fixed;
+      top: calc(env(safe-area-inset-top) + 8px);
+      right: 10px;
+      z-index: 5;
+      font: 700 11px/1.2 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      opacity: .38;
+      white-space: nowrap;
+    }
+
+    .controls {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: calc(env(safe-area-inset-bottom) + 8px);
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      padding: 0 8px;
+      opacity: .25;
+      transition: opacity .15s ease;
+    }
+
+    .controls:focus-within,
+    .controls:active {
+      opacity: 1;
+    }
+
+    button {
+      min-height: 38px;
+      border: 2px solid var(--fg);
+      border-radius: 10px;
+      background: var(--button-bg);
+      color: var(--fg);
+      padding: 8px 10px;
+      font: 700 13px/1 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:active { transform: scale(.97); }
+
+    @media (orientation: landscape) {
+      main {
+        padding:
+          calc(env(safe-area-inset-top) + 8px)
+          calc(env(safe-area-inset-right) + 12px)
+          calc(env(safe-area-inset-bottom) + 54px)
+          calc(env(safe-area-inset-left) + 12px);
+      }
+
+      #date {
+        margin-bottom: clamp(8px, 2vh, 22px);
+        font-size: clamp(18px, 3.5vw, 38px);
+      }
+
+      #time { font-size: clamp(58px, 16vw, 205px); }
+
+      #centi {
+        margin-top: clamp(8px, 2vh, 18px);
+        font-size: clamp(18px, 3.5vw, 34px);
+      }
+
+      .controls { bottom: calc(env(safe-area-inset-bottom) + 4px); }
+      button { min-height: 34px; padding: 7px 9px; font-size: 12px; }
+    }
+
+    @media (max-width: 360px) {
+      #time { font-size: 16.5vw; }
+      button { padding-inline: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main aria-live="off">
+    <div id="date">----</div>
+    <div id="time">--:--:--</div>
+    <div id="centi">.00</div>
+  </main>
+
+  <div id="status">DEVICE CLOCK</div>
+
+  <div class="controls" aria-label="Field Clock controls">
+    <button id="theme" type="button">白黒 / 黄黒</button>
+    <button id="fs" type="button">全画面</button>
+    <button id="wake" type="button">画面固定</button>
+    <button id="minus" type="button">-0.1s</button>
+    <button id="plus" type="button">+0.1s</button>
+    <button id="reset" type="button">補正0</button>
+  </div>
+
+  <script>
+    "use strict";
+
+    const OFFSET_KEY = "fieldClockOffsetMs";
+    const THEME_KEY = "fieldClockTheme";
+
+    let offsetMs = Number(localStorage.getItem(OFFSET_KEY) || 0);
+    let wakeLock = null;
+    let keepAwakeRequested = false;
+
+    const dateEl = document.getElementById("date");
+    const timeEl = document.getElementById("time");
+    const centiEl = document.getElementById("centi");
+    const statusEl = document.getElementById("status");
+    const themeMeta = document.getElementById("theme-color");
+    const wakeButton = document.getElementById("wake");
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function render() {
+      // Do not accumulate time. Read the device clock on every paint.
+      const now = new Date(Date.now() + offsetMs);
+      const weekdays = ["Sun.", "Mon.", "Tue.", "Wed.", "Thu.", "Fri.", "Sat."];
+
+      dateEl.textContent = `${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())} ${weekdays[now.getDay()]}`;
+      timeEl.textContent = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+      centiEl.textContent = `.${String(Math.floor(now.getMilliseconds() / 10)).padStart(2, "0")}`;
+
+      const sign = offsetMs > 0 ? "+" : "";
+      statusEl.textContent = offsetMs === 0
+        ? "DEVICE CLOCK"
+        : `DEVICE CLOCK ${sign}${(offsetMs / 1000).toFixed(1)}s`;
+
+      requestAnimationFrame(render);
+    }
+
+    function saveOffset(nextOffset) {
+      offsetMs = Math.round(nextOffset);
+      localStorage.setItem(OFFSET_KEY, String(offsetMs));
+    }
+
+    function applyTheme(theme) {
+      const dark = theme === "dark";
+      document.body.classList.toggle("dark", dark);
+      themeMeta.setAttribute("content", dark ? "#000000" : "#ffffff");
+      localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+    }
+
+    async function requestWakeLock() {
+      if (!("wakeLock" in navigator)) {
+        alert("このブラウザは画面固定（Wake Lock）に対応していません。");
+        return;
+      }
+
+      try {
+        wakeLock = await navigator.wakeLock.request("screen");
+        keepAwakeRequested = true;
+        wakeButton.textContent = "画面固定中";
+        wakeLock.addEventListener("release", () => {
+          wakeButton.textContent = keepAwakeRequested ? "再固定待ち" : "画面固定";
+        });
+      } catch (error) {
+        wakeButton.textContent = "画面固定";
+        alert("画面固定を開始できませんでした。");
+      }
+    }
+
+    document.getElementById("theme").addEventListener("click", () => {
+      applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
+    });
+
+    document.getElementById("fs").addEventListener("click", async () => {
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        } else if (document.fullscreenElement && document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          alert("iPhoneではホーム画面から起動すると、よりアプリに近い表示で使えます。");
+        }
+      } catch (error) {
+        alert("この環境では全画面表示を開始できません。ホーム画面からの起動を試してください。");
+      }
+    });
+
+    wakeButton.addEventListener("click", async () => {
+      if (wakeLock && !wakeLock.released) {
+        keepAwakeRequested = false;
+        await wakeLock.release();
+        wakeLock = null;
+        wakeButton.textContent = "画面固定";
+        return;
+      }
+      await requestWakeLock();
+    });
+
+    document.getElementById("minus").addEventListener("click", () => saveOffset(offsetMs - 100));
+    document.getElementById("plus").addEventListener("click", () => saveOffset(offsetMs + 100));
+    document.getElementById("reset").addEventListener("click", () => saveOffset(0));
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible" && keepAwakeRequested) {
+        await requestWakeLock();
+      }
+    });
+
+    if (localStorage.getItem(THEME_KEY) === "dark") {
+      applyTheme("dark");
+    }
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
