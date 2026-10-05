@@ -310,9 +310,10 @@ tr:last-child td { border-bottom: 0; }
       <h2>1. Geminiの文字起こしを貼り付け</h2>
       <p class="section-note">1行につき「点名 X Y」。TAB / 空白 / カンマ区切りに対応。MarkdownのコードフェンスもそのままでOK。</p>
       <label for="rawInput">座標テキスト</label>
-      <textarea id="rawInput" spellcheck="false" placeholder="3B6    427.609    375.654&#10;3B7    424.043    383.971&#10;P.1    436.847    354.106"></textarea>
+      <textarea id="rawInput" spellcheck="false" placeholder="3B6    100.000    200.000&#10;3B7    110.000    200.000&#10;P.1    110.000    210.000"></textarea>
+      <p class="section-note">入力例とデモは、100 / 200 を基点に10ずつ増減させた合成座標です。実在地点・測量成果・座標系との対応はありません。</p>
       <div class="button-row">
-        <button class="btn" id="sampleBtn" type="button">サンプルを入れる</button>
+        <button class="btn" id="sampleBtn" type="button">合成デモを入れる</button>
         <button class="btn" id="clearBtn" type="button">クリア</button>
       </div>
     </section>
@@ -338,7 +339,7 @@ tr:last-child td { border-bottom: 0; }
         </div>
         <div>
           <label for="fileName">保存ファイル名</label>
-          <input id="fileName" type="text" value="sima_data" placeholder="例: C現場">
+          <input id="fileName" type="text" value="sima_data" placeholder="例: demo_synthetic">
           <div class="field-help">.SIM は自動付与。既に入力済みなら重ねて付けない。</div>
         </div>
       </div>
@@ -730,12 +731,12 @@ if (typeof window !== 'undefined') window.SimaCore = SimaCore;
   }
 
   function loadSample() {
-    els.raw.value = '3B6    427.609    375.654\n3B7    424.043    383.971\nP.1    436.847    354.106\nS.2    435.126    360.225';
+    els.raw.value = '3B6    100.000    200.000\n3B7    110.000    200.000\nP.1    110.000    210.000\nS.2    100.000    210.000';
     els.removeLeading.value = '3';
     els.removeGlobal.value = '.';
     els.prefix.value = 'C';
     els.replaceRules.value = '';
-    els.fileName.value = 'C現場';
+    els.fileName.value = 'demo_synthetic';
     updateAll();
   }
 
