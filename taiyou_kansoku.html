@@ -545,32 +545,33 @@ input.is-error {
     border: none !important;
   }
 
-  /* Summary (T' and M-S in one row) */
+  /* Summary (T' and M-S in one row)
+     手簿へ転記するときに確認する値なので、観測値(9pt)より一回り大きく太字で印字 */
   .set-summary {
     display: flex;
     flex-direction: row;
     align-items: baseline;
     flex-wrap: nowrap;
     gap: 0;
-    padding: 0 1px;
+    padding: 0.5mm 1px 0;
     margin: 0;
     border-top: 0.3pt solid #ccc;
   }
   .set-summary .s-label {
-    font-size: 5pt;
+    font-size: 6.5pt;
     font-family: 'Noto Serif JP', serif;
-    color: #444;
-    margin-right: 3px;
+    color: #000;
+    margin-right: 4px;
     white-space: nowrap;
   }
   .set-summary .s-val {
-    font-size: 6pt;
+    font-size: 10pt;
     font-family: 'JetBrains Mono', monospace;
-    font-weight: 400;
+    font-weight: 600;
     color: #000;
   }
   .set-summary .ms-val {
-    font-size: 6pt;
+    font-size: 10pt;
     font-weight: 600;
     color: #000;
     margin-right: 0;
@@ -583,7 +584,7 @@ input.is-error {
     white-space: nowrap;
   }
   .set-summary .ms-group .s-label {
-    margin-right: 3px;
+    margin-right: 4px;
   }
 
   /* Result footer: PDFと同じ枠。入力欄は隠し、整形済みの値を印字 */
