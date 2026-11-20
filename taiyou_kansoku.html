@@ -196,6 +196,13 @@ button:hover { background: var(--rule-faint); }
   color: var(--ink-soft);
   text-align: right;
   padding-right: 8px;
+  width: 120px;
+}
+
+/* 余白列: 変換値と正反の平均の間で残り幅を吸収する */
+.obs-table th.c-gap,
+.obs-table td.c-gap {
+  padding: 0;
 }
 
 .obs-table td.c-nodash {
@@ -295,6 +302,67 @@ input.is-error {
   border: none;
   border-top: 1px solid var(--rule-faint);
   margin: 4px 0;
+}
+
+/* ── Result footer (方位角中数 / 真北方向角) ── */
+.result-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-top: 12px;
+}
+
+.result-footer .rf-col {
+  display: flex;
+  flex-direction: column;
+}
+.result-footer .rf-col + .rf-col {
+  border-left: 1px solid var(--rule-soft);
+}
+
+.result-footer .rf-field {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  align-items: center;
+  column-gap: 8px;
+  padding: 6px 10px;
+}
+.result-footer .rf-field + .rf-field {
+  border-top: 1px solid var(--rule-faint);
+}
+
+.result-footer label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.result-footer input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  background: var(--input-bg);
+  border: none;
+  border-bottom: 1px solid var(--ink-faint);
+  padding: 4px 4px;
+  color: var(--ink);
+  width: 100%;
+  text-align: right;
+  transition: border-color 0.15s, background 0.15s;
+}
+.result-footer input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--ink);
+  background: var(--input-bg-active);
+}
+
+.result-footer .rf-val {
+  grid-column: 2;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-align: right;
+  min-height: 15px;
 }
 
 /* Sets column wrappers (screen: stacked; print: side-by-side) */
@@ -431,9 +499,11 @@ input.is-error {
     white-space: nowrap;
     overflow: hidden;
   }
-  /* Hide 変換値 column entirely on print (header at 6th + all c-calc cells) */
+  /* Hide 変換値 column (6th) and 余白列 (7th) entirely on print */
   .obs-table th:nth-child(6),
-  .obs-table td.c-calc {
+  .obs-table td.c-calc,
+  .obs-table th.c-gap,
+  .obs-table td.c-gap {
     display: none;
   }
   /* Explicit column widths so c-time / c-angle screen widths don't bleed in */
@@ -447,7 +517,7 @@ input.is-error {
   .obs-table td.c-time   { width: 22mm; }
   .obs-table th:nth-child(5),
   .obs-table td.c-angle  { width: 25mm; }
-  .obs-table th:nth-child(7),
+  .obs-table th:nth-child(8),
   .obs-table td.c-avg    { width: 23mm; }
   .obs-table td.c-avg {
     font-size: 5.5pt;
@@ -475,32 +545,33 @@ input.is-error {
     border: none !important;
   }
 
-  /* Summary (T' and M-S in one row) */
+  /* Summary (T' and M-S in one row)
+     手簿へ転記するときに確認する値なので、観測値(9pt)より一回り大きく太字で印字 */
   .set-summary {
     display: flex;
     flex-direction: row;
     align-items: baseline;
     flex-wrap: nowrap;
     gap: 0;
-    padding: 0 1px;
+    padding: 0.5mm 1px 0;
     margin: 0;
     border-top: 0.3pt solid #ccc;
   }
   .set-summary .s-label {
-    font-size: 5pt;
+    font-size: 6.5pt;
     font-family: 'Noto Serif JP', serif;
-    color: #444;
-    margin-right: 3px;
+    color: #000;
+    margin-right: 4px;
     white-space: nowrap;
   }
   .set-summary .s-val {
-    font-size: 6pt;
+    font-size: 10pt;
     font-family: 'JetBrains Mono', monospace;
-    font-weight: 400;
+    font-weight: 600;
     color: #000;
   }
   .set-summary .ms-val {
-    font-size: 6pt;
+    font-size: 10pt;
     font-weight: 600;
     color: #000;
     margin-right: 0;
@@ -513,7 +584,39 @@ input.is-error {
     white-space: nowrap;
   }
   .set-summary .ms-group .s-label {
-    margin-right: 3px;
+    margin-right: 4px;
+  }
+
+  /* Result footer: PDFと同じ枠。入力欄は隠し、整形済みの値を印字 */
+  .result-footer {
+    margin-top: 2mm;
+    border-top: 0.5pt solid #000;
+    border-bottom: 0.5pt solid #000;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .result-footer .rf-col + .rf-col {
+    border-left: 0.5pt solid #000;
+  }
+  .result-footer .rf-field {
+    grid-template-columns: auto 1fr;
+    padding: 1mm 2mm;
+    column-gap: 2mm;
+  }
+  .result-footer .rf-field + .rf-field {
+    border-top: 0.5pt solid #000;
+  }
+  .result-footer label {
+    font-size: 6.5pt;
+    color: #000;
+  }
+  .result-footer input { display: none !important; }
+  .result-footer .rf-val {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 7pt;
+    color: #000;
+    min-height: 0;
   }
 }
 </style>
@@ -552,6 +655,32 @@ input.is-error {
 
   <!-- ===== Observation sets (built by JS) ===== -->
   <div id="sets-container"></div>
+
+  <!-- ===== Result footer (PDF手簿の下部と同じ3項目) ===== -->
+  <section class="result-footer">
+    <div class="rf-col">
+      <div class="rf-field">
+        <label for="res-az">方位角中数：</label>
+        <input type="text" id="res-az" inputmode="decimal"
+               placeholder="度.分秒" tabindex="121" autocomplete="off">
+        <span class="rf-val" id="res-az-val"></span>
+      </div>
+    </div>
+    <div class="rf-col">
+      <div class="rf-field">
+        <label for="res-tn-calc">真北方向角(計算)：</label>
+        <input type="text" id="res-tn-calc"
+               placeholder="±度.分秒" tabindex="122" autocomplete="off">
+        <span class="rf-val" id="res-tn-calc-val"></span>
+      </div>
+      <div class="rf-field">
+        <label for="res-tn-web">真北方向角(WEB)：</label>
+        <input type="text" id="res-tn-web"
+               placeholder="±度.分秒" tabindex="123" autocomplete="off">
+        <span class="rf-val" id="res-tn-web-val"></span>
+      </div>
+    </div>
+  </section>
 
 </div><!-- .container -->
 
@@ -737,7 +866,7 @@ function makeSetBlock(n) {
   tbl.innerHTML =
     `<thead><tr>` +
     `<th>行</th><th>正反</th><th>目標</th>` +
-    `<th>時　刻</th><th>観測角（度.分秒）</th><th>変換値</th><th>正反の平均</th>` +
+    `<th>時　刻</th><th>観測角（度.分秒）</th><th>変換値</th><th class="c-gap"></th><th>正反の平均</th>` +
     `</tr></thead>`;
   const tbody = document.createElement('tbody');
 
@@ -768,6 +897,7 @@ function makeSetBlock(n) {
       timeCell +
       angleCell +
       `<td class="c-calc" id="s${n}r${ri}c"></td>` +
+      `<td class="c-gap"></td>` +
       avgCell(n, ri, cfg);
     tbody.appendChild(tr);
   });
@@ -900,6 +1030,11 @@ function saveData() {
     lat:   document.getElementById('obs-lat').value,
     lon:   document.getElementById('obs-lon').value,
     point: document.getElementById('obs-point').value,
+    result: {
+      az:     document.getElementById('res-az').value,
+      tnCalc: document.getElementById('res-tn-calc').value,
+      tnWeb:  document.getElementById('res-tn-web').value,
+    },
     sets: {},
   };
   for (let n = 1; n <= 10; n++) {
@@ -929,6 +1064,13 @@ function loadData() {
 
   updateLatDisplay();
   updateLonDisplay();
+
+  if (data.result) {
+    if (data.result.az)     setVal('res-az',      data.result.az);
+    if (data.result.tnCalc) setVal('res-tn-calc', data.result.tnCalc);
+    if (data.result.tnWeb)  setVal('res-tn-web',  data.result.tnWeb);
+  }
+  updateResultFooter();
 
   if (!data.sets) return;
   for (let n = 1; n <= 10; n++) {
@@ -967,6 +1109,71 @@ function updateLonDisplay() {
   if (v === '') { el.textContent = ''; return; }
   const deg = dms2deg(parseFloat(v));
   el.textContent = isNaN(deg) ? 'エラー' : deg2dms(deg);
+}
+
+// ─────────────────────────────────────────────
+// Result footer (方位角中数 / 真北方向角)
+// ─────────────────────────────────────────────
+
+/** 結果欄の入力を解析して {sign,d,m,s} を返す。空欄は null、不正は NaN。
+ *  受け付ける形式: "0.003885"(度.分秒, 秒の小数2桁まで) / "0°00′38.85″" / "0°00'38.85\""
+ *  allowSign=true なら先頭の + / - / − を受け付ける。 */
+function parseResultAngle(v, allowSign) {
+  if (v == null) return null;
+  let str = String(v).trim();
+  if (str === '') return null;
+  str = str.replace(/[−－ー]/g, '-').replace(/[＋]/g, '+');
+
+  let sign = '';
+  if (/^[+-]/.test(str)) {
+    if (!allowSign) return NaN;
+    sign = str[0];
+    str = str.slice(1).trim();
+  }
+
+  let d, m, s;
+  let mt = str.match(/^(\d{1,3})(?:\.(\d{1,6}))?$/);
+  if (mt) {
+    const frac = (mt[2] || '').padEnd(6, '0');
+    d = parseInt(mt[1], 10);
+    m = parseInt(frac.slice(0, 2), 10);
+    s = parseFloat(frac.slice(2, 4) + '.' + frac.slice(4, 6));
+  } else {
+    mt = str.match(/^(\d{1,3})\s*[°ﾟ゜度]\s*(\d{1,2})\s*[′'’分]\s*(\d{1,2}(?:\.\d{1,2})?)\s*[″"”秒]?$/);
+    if (!mt) return NaN;
+    d = parseInt(mt[1], 10);
+    m = parseInt(mt[2], 10);
+    s = parseFloat(mt[3]);
+  }
+  if (m > 59 || s >= 60 || d >= 360) return NaN;
+  return { sign, d, m, s };
+}
+
+function formatResultAngle(p, showSign) {
+  const sign = showSign ? (p.sign === '-' ? '-' : '+') : '';
+  return `${sign}${p.d}°${String(p.m).padStart(2, '0')}′${p.s.toFixed(2).padStart(5, '0')}″`;
+}
+
+const RESULT_FIELDS = [
+  { id: 'res-az',      signed: false },
+  { id: 'res-tn-calc', signed: true  },
+  { id: 'res-tn-web',  signed: true  },
+];
+
+function updateResultField(f) {
+  const input = document.getElementById(f.id);
+  const out   = document.getElementById(f.id + '-val');
+  if (!input || !out) return;
+  const p = parseResultAngle(input.value, f.signed);
+  input.classList.toggle('is-error', Number.isNaN(p));
+  if (p === null)            out.textContent = '';
+  else if (Number.isNaN(p))  out.textContent = 'エラー';
+  else                       out.textContent = formatResultAngle(p, f.signed);
+  out.style.color = Number.isNaN(p) ? 'var(--error)' : '';
+}
+
+function updateResultFooter() {
+  RESULT_FIELDS.forEach(updateResultField);
 }
 
 // ─────────────────────────────────────────────
@@ -1016,6 +1223,9 @@ document.addEventListener('DOMContentLoaded', function () {
       scheduleSave();
     } else if (['obs-date','obs-point'].includes(id)) {
       scheduleSave();
+    } else if (id.startsWith('res-')) {
+      updateResultFooter();
+      scheduleSave();
     }
   });
 
@@ -1033,7 +1243,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.addEventListener('focusin', function (e) {
     const el = e.target;
-    if (el.type === 'number' || el.classList.contains('t-time') || el.classList.contains('t-angle')) {
+    if (el.type === 'number' || el.classList.contains('t-time') || el.classList.contains('t-angle') ||
+        (el.id || '').startsWith('res-')) {
       el.select();
     }
   });
